@@ -84,7 +84,8 @@ $$;
 
 CREATE TABLE IF NOT EXISTS tickets (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    guest_id VARCHAR(255),
     showtime_id UUID NOT NULL REFERENCES showtimes(id) ON DELETE CASCADE,
     seat_id VARCHAR(10) NOT NULL, -- Örn: "A1", "B4"
     status ticket_status DEFAULT 'PENDING',

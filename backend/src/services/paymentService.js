@@ -5,12 +5,23 @@ class PaymentService {
     /**
      * Müşterinin PENDING statüsündeki biletlerini bulur ve "Mock" bir ödeme işlemi gerçekleştirir.
      */
-    async processPayment(userId, showtimeId, cardNumber, cvv, expiryDate) {
+    async processPayment(userId, guestId, showtimeId, cardNumber, cvv, expiryDate) {
         // 1. Kullanıcının PENDING biletlerini bul
-        const pendingResult = await db.query(
-            "SELECT id, seat_id FROM tickets WHERE user_id = $1 AND showtime_id = $2 AND status = 'PENDING'",
-            [userId, showtimeId]
-        );
+        let pendingResult;
+        
+        if (userId) {
+            pendingResult = await db.query(
+                "SELECT id, seat_id FROM tickets WHERE user_id = $1 AND showtime_id = $2 AND status = 'PENDING'",
+                [userId, showtimeId]
+            );
+        } else if (guestId) {
+            pendingResult = await db.query(
+                "SELECT id, seat_id FROM tickets WHERE guest_id = $1 AND showtime_id = $2 AND status = 'PENDING'",
+                [guestId, showtimeId]
+            );
+        } else {
+            throw new Error('Kimlik bilgisi bulunamadı.');
+        }
 
         if (pendingResult.rows.length === 0) {
             throw new Error('Ödenecek bilet (sepet) bulunamadı veya 10 dakikalık süreniz doldu.');

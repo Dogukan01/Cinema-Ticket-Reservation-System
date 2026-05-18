@@ -23,7 +23,7 @@ class ReservationController {
     async lockSeat(req, res) {
         try {
             const { showtimeId, seatId } = req.body;
-            const userId = req.user.id; // Token'dan gelir
+            const userId = req.user.identifier; // Token veya Guest ID'den gelir
 
             if (!showtimeId || !seatId) return res.status(400).json({ error: 'showtimeId ve seatId zorunludur.' });
 
@@ -45,7 +45,7 @@ class ReservationController {
     async unlockSeat(req, res) {
         try {
             const { showtimeId, seatId } = req.body;
-            const userId = req.user.id;
+            const userId = req.user.identifier;
             
             const isUnlocked = await seatLockService.unlockSeat(showtimeId, seatId, userId);
             if (isUnlocked) {
@@ -64,13 +64,14 @@ class ReservationController {
     async reserve(req, res) {
         try {
             const { showtimeId, seatIds } = req.body;
-            const userId = req.user.id;
+            const userId = req.user.id || null;
+            const guestId = req.user.guestId || null;
 
             if (!showtimeId || !seatIds) {
                 return res.status(400).json({ error: 'showtimeId ve seatIds (array) zorunludur.' });
             }
 
-            const tickets = await reservationService.reserveTickets(userId, showtimeId, seatIds);
+            const tickets = await reservationService.reserveTickets(userId, guestId, showtimeId, seatIds);
             
             return res.status(201).json({
                 message: 'Biletler başarıyla PENDING statüsünde ayrıldı. Lütfen ödemeyi tamamlayın.',

@@ -1,10 +1,10 @@
 const express = require('express');
 const paymentController = require('../controllers/paymentController');
-const { verifyToken } = require('../middleware/authMiddleware');
+const { extractUserOrGuest } = require('../middleware/guestMiddleware');
 
 const router = express.Router();
 
-// Sadece Giriş Yapmış Kullanıcıların Kullanabileceği Endpoint
-router.post('/pay', verifyToken, paymentController.pay);
+// Hem Giriş Yapmış Hem Anonim Kullanıcılar
+router.post('/pay', extractUserOrGuest, paymentController.pay);
 
 module.exports = router;

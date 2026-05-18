@@ -60,7 +60,7 @@ class ReservationService {
      * Ödeme aşamasına geçiş için hazırlık adımıdır.
      * Maksimum 6 bilet sınırını kontrol eder.
      */
-    async reserveTickets(userId, showtimeId, seatIds) {
+    async reserveTickets(userId, guestId, showtimeId, seatIds) {
         if (!Array.isArray(seatIds) || seatIds.length === 0) {
             throw new Error('En az 1 koltuk seçmelisiniz.');
         }
@@ -89,17 +89,18 @@ class ReservationService {
                 // 1. Redis'te bu koltuk gerçekten BU KULLANICI tarafından kilitlenmiş mi?
                 const lockKey = `seat_lock:${showtimeId}:${seatId}`;
                 const lockOwner = await client.get(lockKey);
+                const identifier = userId || guestId;
 
-                if (lockOwner !== userId) {
+                if (lockOwner !== identifier) {
                     throw new Error(`${seatId} numaralı koltuk kilitli değil veya kilidin süresi dolmuş. Lütfen koltuğu tekrar seçin.`);
                 }
 
                 // 2. Veritabanına PENDING biletini yaz (Eğer başkası DB'ye yazdıysa Unique constraint hata fırlatır)
                 const insertQuery = `
-                    INSERT INTO tickets (user_id, showtime_id, seat_id, status, price)
-                    VALUES ($1, $2, $3, 'PENDING', $4) RETURNING *
+                    INSERT INTO tickets (user_id, guest_id, showtime_id, seat_id, status, price)
+                    VALUES ($1, $2, $3, $4, 'PENDING', $5) RETURNING *
                 `;
-                const result = await dbClient.query(insertQuery, [userId, showtimeId, seatId, price]);
+                const result = await dbClient.query(insertQuery, [userId, guestId, showtimeId, seatId, price]);
                 createdTickets.push(result.rows[0]);
 
                 // Not: Redis kilidini BURADA kaldırmıyoruz. Ödeme (Epic 3) başarılı olunca tamamen silinecek.

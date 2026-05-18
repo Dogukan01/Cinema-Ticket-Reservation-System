@@ -7,7 +7,8 @@ class PaymentController {
      */
     async pay(req, res) {
         try {
-            const userId = req.user.id;
+            const userId = req.user.id || null;
+            const guestId = req.user.guestId || null;
             const { showtimeId, cardNumber, cvv, expiryDate } = req.body;
 
             if (!showtimeId || !cardNumber || !cvv || !expiryDate) {
@@ -16,6 +17,7 @@ class PaymentController {
 
             const paymentResult = await paymentService.processPayment(
                 userId, 
+                guestId,
                 showtimeId, 
                 cardNumber, 
                 cvv, 

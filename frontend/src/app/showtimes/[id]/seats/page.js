@@ -45,14 +45,11 @@ export default function SeatSelection({ params }) {
             }
 
             try {
-                // Token gerekiyor (Eğer token yoksa 401 hatası döner)
                 await api.post('/reservations/lock', { showtimeId, seatId });
                 setSelectedSeats([...selectedSeats, seatId]);
                 setErrorMsg('');
             } catch (err) {
-                if (err.response?.status === 401) {
-                    setErrorMsg('Koltuk seçebilmek için giriş yapmalısınız!');
-                } else if (err.response?.status === 409) {
+                if (err.response?.status === 409) {
                     setErrorMsg('Bu koltuk şu an başka bir müşteri tarafından kilitlendi.');
                     // Ekrandaki durumu güncelle (Başkası aldıysa unavailable yap)
                     setSeatData(prev => ({ ...prev, unavailableSeats: [...prev.unavailableSeats, seatId] }));

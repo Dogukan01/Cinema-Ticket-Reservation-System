@@ -18,6 +18,13 @@ api.interceptors.request.use(
             const token = localStorage.getItem('token');
             if (token) {
                 config.headers.Authorization = `Bearer ${token}`;
+            } else {
+                let guestId = localStorage.getItem('guest_id');
+                if (!guestId) {
+                    guestId = 'guest_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+                    localStorage.setItem('guest_id', guestId);
+                }
+                config.headers['X-Guest-ID'] = guestId;
             }
         }
         return config;
