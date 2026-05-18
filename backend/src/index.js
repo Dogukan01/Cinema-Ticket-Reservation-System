@@ -1,21 +1,40 @@
 require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
 const db = require('./config/db');
 
-async function testConnection() {
-  try {
-    console.log('PostgreSQL bağlantısı sınanıyor...');
-    // Veritabanına basit bir sorgu atarak bağlantıyı test ediyoruz
-    const res = await db.query('SELECT NOW() AS current_time');
-    
-    console.log('✅ PostgreSQL Bağlantı Testi Başarılı!');
-    console.log('⏳ Sunucu Zamanı:', res.rows[0].current_time);
-    
-    // Bağlantı başarılıysa process sonlandırılır (Sadece test scripti olduğu için)
-    process.exit(0);
-  } catch (error) {
-    console.error('❌ Veritabanı bağlantı hatası:', error.message);
-    process.exit(1);
-  }
+// Route'lar
+const authRoutes = require('./routes/authRoutes');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware'ler
+app.use(cors());
+app.use(express.json()); // JSON body parse
+app.use(express.urlencoded({ extended: true }));
+
+// API Endpoint'leri
+app.use('/api/auth', authRoutes);
+
+// Health Check
+app.get('/health', (req, res) => {
+    res.json({ status: 'UP', message: 'SBRS Backend API çalışıyor.' });
+});
+
+// Veritabanı bağlantı testi ve Sunucuyu başlatma
+async function startServer() {
+    try {
+        await db.query('SELECT NOW()');
+        console.log('✅ PostgreSQL Veritabanı Bağlantısı Başarılı!');
+        
+        app.listen(PORT, () => {
+            console.log(`🚀 SBRS Sunucusu http://localhost:${PORT} portunda çalışıyor.`);
+        });
+    } catch (error) {
+        console.error('❌ Sunucu başlatılamadı. Veritabanı bağlantı hatası:', error.message);
+        process.exit(1);
+    }
 }
 
-testConnection();
+startServer();
