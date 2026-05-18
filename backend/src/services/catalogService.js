@@ -22,6 +22,31 @@ class CatalogService {
         return result.rows;
     }
 
+    async getMovieWithShowtimes(movieId) {
+        // 1. Film Detayları
+        const movieResult = await db.query('SELECT * FROM movies WHERE id = $1', [movieId]);
+        if (movieResult.rows.length === 0) throw new Error('Film bulunamadı.');
+        const movie = movieResult.rows[0];
+
+        // 2. Bu filme ait Seanslar (Sinema ve Salon bilgileriyle birleştirilmiş)
+        const showtimesQuery = `
+            SELECT s.id as showtime_id, s.start_time, s.price, 
+                   h.name as hall_name, h.id as hall_id,
+                   c.name as cinema_name, c.id as cinema_id
+            FROM showtimes s
+            JOIN halls h ON s.hall_id = h.id
+            JOIN cinemas c ON h.cinema_id = c.id
+            WHERE s.movie_id = $1
+            ORDER BY c.name, s.start_time ASC
+        `;
+        const showtimesResult = await db.query(showtimesQuery, [movieId]);
+
+        return {
+            ...movie,
+            showtimes: showtimesResult.rows
+        };
+    }
+
     // ==========================================
     // SİNEMALAR VE SALONLAR (CINEMAS & HALLS)
     // ==========================================

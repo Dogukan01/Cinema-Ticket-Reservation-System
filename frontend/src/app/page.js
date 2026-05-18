@@ -67,9 +67,11 @@ export default async function Home() {
                 {movie.description}
               </p>
               
-              <button className="btn-primary" style={{ marginTop: '20px', width: '100%' }}>
-                Bilet Al
-              </button>
+              <a href={`/movies/${movie.id}`} style={{ width: '100%', textDecoration: 'none' }}>
+                <button className="btn-primary" style={{ marginTop: '20px', width: '100%' }}>
+                  Seansları Gör & Bilet Al
+                </button>
+              </a>
             </div>
           ))}
         </div>

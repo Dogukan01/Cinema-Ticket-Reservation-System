@@ -6,6 +6,7 @@ const router = express.Router();
 
 // Herkese Açık (Müşteriler filmleri görebilmeli)
 router.get('/movies', catalogController.getMovies);
+router.get('/movies/:id', catalogController.getMovie);
 
 // Sadece Admin (Yönetici) Yetkisi Gerektiren İşlemler
 router.post('/movies', verifyToken, requireRoles('admin'), catalogController.addMovie);
