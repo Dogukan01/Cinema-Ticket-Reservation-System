@@ -1,0 +1,82 @@
+# ==========================================
+# Cinema Ticket Reservation System (SBRS)
+# Git Ignore Konfigürasyonu
+# ==========================================
+
+# 1. Dependency Directories (Bağımlılıklar)
+node_modules/
+jspm_packages/
+bower_components/
+web_modules/
+.npm/
+
+# 2. Logs (Log Dosyaları)
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# 3. Environment Variables (Çevresel Değişkenler - Güvenlik İçin Kritik)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+# 4. Build & Compilation (Derleme ve Çıktı Dosyaları)
+dist/
+build/
+out/
+.next/
+.nuxt/
+public/
+.serverless/
+coverage/
+*.lcov
+.nyc_output
+
+# 5. Caches (Önbellek Dosyaları)
+.cache
+.parcel-cache
+.eslintcache
+.stylelintcache
+*.tsbuildinfo
+
+# 6. React Native / Mobile (Mobil Geliştirme)
+# Android
+android/app/build/
+android/.gradle/
+android/local.properties
+# iOS
+ios/build/
+ios/Pods/
+ios/Podfile.lock
+*.xcworkspace/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# 7. OS Generated Files (İşletim Sistemi Kalıntıları)
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 8. IDEs and Editors (Editör Ayarları)
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.viminfo
