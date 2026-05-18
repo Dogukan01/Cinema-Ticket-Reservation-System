@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+import ShowtimeList from '@/components/ShowtimeList';
 
 async function getMovieDetails(id) {
   try {
@@ -52,29 +53,7 @@ export default async function MovieDetails({ params }) {
       <div style={{ flex: '2 1 500px' }} className="glass-panel">
         <div style={{ padding: '30px' }}>
             <h2 style={{ marginBottom: '30px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>Seans Seçimi</h2>
-            
-            {Object.keys(showtimesByCinema).length === 0 ? (
-                <p>Bu film için henüz seans tanımlanmamıştır.</p>
-            ) : (
-                Object.keys(showtimesByCinema).map(cinemaName => (
-                    <div key={cinemaName} style={{ marginBottom: '30px' }}>
-                        <h3 style={{ color: 'var(--accent-color)', marginBottom: '15px' }}>📍 {cinemaName}</h3>
-                        <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-                            {showtimesByCinema[cinemaName].map(st => {
-                                const timeString = new Date(st.start_time).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-                                return (
-                                    <a key={st.showtime_id} href={`/showtimes/${st.showtime_id}/seats`} style={{ textDecoration: 'none' }}>
-                                        <div className="glass-card" style={{ padding: '15px 25px', textAlign: 'center', cursor: 'pointer', border: '1px solid var(--accent-color)' }}>
-                                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#fff' }}>{timeString}</div>
-                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '5px' }}>{st.hall_name}</div>
-                                        </div>
-                                    </a>
-                                )
-                            })}
-                        </div>
-                    </div>
-                ))
-            )}
+            <ShowtimeList showtimesByCinema={showtimesByCinema} />
         </div>
       </div>
 

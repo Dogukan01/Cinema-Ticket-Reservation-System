@@ -63,15 +63,15 @@ class ReservationController {
      */
     async reserve(req, res) {
         try {
-            const { showtimeId, seatIds } = req.body;
+            const { showtimeId, seatSelections } = req.body;
             const userId = req.user.id || null;
             const guestId = req.user.guestId || null;
 
-            if (!showtimeId || !seatIds) {
-                return res.status(400).json({ error: 'showtimeId ve seatIds (array) zorunludur.' });
+            if (!showtimeId || !seatSelections) {
+                return res.status(400).json({ error: 'showtimeId ve seatSelections (array) zorunludur.' });
             }
 
-            const tickets = await reservationService.reserveTickets(userId, guestId, showtimeId, seatIds);
+            const tickets = await reservationService.reserveTickets(userId, guestId, showtimeId, seatSelections);
             
             return res.status(201).json({
                 message: 'Biletler başarıyla PENDING statüsünde ayrıldı. Lütfen ödemeyi tamamlayın.',

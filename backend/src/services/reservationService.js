@@ -60,13 +60,13 @@ class ReservationService {
      * Ödeme aşamasına geçiş için hazırlık adımıdır.
      * Maksimum 6 bilet sınırını kontrol eder.
      */
-    async reserveTickets(userId, guestId, showtimeId, seatIds) {
-        if (!Array.isArray(seatIds) || seatIds.length === 0) {
+    async reserveTickets(userId, guestId, showtimeId, seatSelections) {
+        if (!Array.isArray(seatSelections) || seatSelections.length === 0) {
             throw new Error('En az 1 koltuk seçmelisiniz.');
         }
 
         // Karaborsa Koruması (Max 6)
-        if (seatIds.length > 6) {
+        if (seatSelections.length > 6) {
             throw new Error('Tek bir işlemde en fazla 6 adet bilet ayırabilirsiniz.');
         }
 
@@ -85,7 +85,9 @@ class ReservationService {
 
             const createdTickets = [];
 
-            for (const seatId of seatIds) {
+            for (const selection of seatSelections) {
+                const { seatId, type } = selection; // type: 'ADULT' veya 'STUDENT'
+                
                 // 1. Redis'te bu koltuk gerçekten BU KULLANICI tarafından kilitlenmiş mi?
                 const lockKey = `seat_lock:${showtimeId}:${seatId}`;
                 const lockOwner = await client.get(lockKey);
@@ -94,13 +96,17 @@ class ReservationService {
                 if (lockOwner !== identifier) {
                     throw new Error(`${seatId} numaralı koltuk kilitli değil veya kilidin süresi dolmuş. Lütfen koltuğu tekrar seçin.`);
                 }
+                
+                // Fiyat hesaplama
+                const ticketType = type === 'STUDENT' ? 'STUDENT' : 'ADULT';
+                const finalPrice = ticketType === 'STUDENT' ? price * 0.8 : price;
 
                 // 2. Veritabanına PENDING biletini yaz (Eğer başkası DB'ye yazdıysa Unique constraint hata fırlatır)
                 const insertQuery = `
-                    INSERT INTO tickets (user_id, guest_id, showtime_id, seat_id, status, price)
-                    VALUES ($1, $2, $3, $4, 'PENDING', $5) RETURNING *
+                    INSERT INTO tickets (user_id, guest_id, showtime_id, seat_id, status, price, ticket_type)
+                    VALUES ($1, $2, $3, $4, 'PENDING', $5, $6) RETURNING *
                 `;
-                const result = await dbClient.query(insertQuery, [userId, guestId, showtimeId, seatId, price]);
+                const result = await dbClient.query(insertQuery, [userId, guestId, showtimeId, seatId, finalPrice, ticketType]);
                 createdTickets.push(result.rows[0]);
 
                 // Not: Redis kilidini BURADA kaldırmıyoruz. Ödeme (Epic 3) başarılı olunca tamamen silinecek.

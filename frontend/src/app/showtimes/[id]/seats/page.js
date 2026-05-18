@@ -13,6 +13,18 @@ export default function SeatSelection({ params }) {
     const [loading, setLoading] = useState(true);
     const [selectedSeats, setSelectedSeats] = useState([]);
     const [errorMsg, setErrorMsg] = useState('');
+    const [expectedTickets, setExpectedTickets] = useState({ adultTickets: 0, studentTickets: 0 });
+
+    useEffect(() => {
+        const saved = localStorage.getItem('ticketSelection');
+        if (saved) {
+            setExpectedTickets(JSON.parse(saved));
+        } else {
+            router.push(`/showtimes/${showtimeId}/tickets`);
+        }
+    }, [router, showtimeId]);
+
+    const totalExpected = expectedTickets.adultTickets + expectedTickets.studentTickets;
 
     // Koltuk verilerini Backend'den çek
     useEffect(() => {
@@ -38,9 +50,9 @@ export default function SeatSelection({ params }) {
         const isCurrentlySelected = selectedSeats.includes(seatId);
 
         if (!isCurrentlySelected) {
-            // Seçim (Kilitleme İsteği - Backend Redis)
-            if (selectedSeats.length >= 6) {
-                setErrorMsg('En fazla 6 adet koltuk seçebilirsiniz.');
+            // Seçim sınırı kontrolü (Kullanıcının bilet sayısına göre)
+            if (selectedSeats.length >= totalExpected) {
+                setErrorMsg(`En fazla ${totalExpected} adet koltuk seçebilirsiniz.`);
                 return;
             }
 
@@ -70,14 +82,30 @@ export default function SeatSelection({ params }) {
     };
 
     const handleReserve = async () => {
-        if (selectedSeats.length === 0) return;
+        if (selectedSeats.length !== totalExpected) {
+            setErrorMsg(`Lütfen tam olarak ${totalExpected} adet koltuk seçiniz.`);
+            return;
+        }
         
         try {
+            // Seçilen koltukları Öğrenci ve Yetişkin tiplerine bölüştürüyoruz
+            const seatSelections = [];
+            let adultRemaining = expectedTickets.adultTickets;
+            let studentRemaining = expectedTickets.studentTickets;
+
+            selectedSeats.forEach(seatId => {
+                if (adultRemaining > 0) {
+                    seatSelections.push({ seatId, type: 'ADULT' });
+                    adultRemaining--;
+                } else if (studentRemaining > 0) {
+                    seatSelections.push({ seatId, type: 'STUDENT' });
+                    studentRemaining--;
+                }
+            });
+
             // PENDING bilet yaratma
-            await api.post('/reservations/reserve', { showtimeId, seatIds: selectedSeats });
-            alert('Koltuklar başarıyla rezerve edildi! Ödeme sayfasına yönlendiriliyorsunuz...');
-            // Epic 5'te burası /checkout sayfasına gidecek. Şimdilik ana sayfaya atalım.
-            router.push('/');
+            await api.post('/reservations/reserve', { showtimeId, seatSelections });
+            router.push(`/showtimes/${showtimeId}/checkout`);
         } catch (err) {
             setErrorMsg(err.response?.data?.error || 'Rezervasyon başarısız.');
         }
@@ -160,8 +188,13 @@ export default function SeatSelection({ params }) {
                         <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Seçilen Koltuklar</div>
                         <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{selectedSeats.join(', ')}</div>
                     </div>
-                    <button className="btn-primary" onClick={handleReserve}>
-                        Seçimi Onayla ({selectedSeats.length} Bilet)
+                    <button 
+                        className="btn-primary" 
+                        onClick={handleReserve}
+                        disabled={selectedSeats.length !== totalExpected}
+                        style={{ opacity: selectedSeats.length !== totalExpected ? 0.5 : 1, cursor: selectedSeats.length !== totalExpected ? 'not-allowed' : 'pointer' }}
+                    >
+                        Ödemeye Geç
                     </button>
                 </div>
             )}
