@@ -1,7 +1,7 @@
 -- UUID eklentisini aktif et (Eğer yoksa)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Rolleri ENUM (Özel Veri Tipi) olarak tanımlıyoruz (Sadece 3 geçerli rol olabilir)
+-- Rolleri ENUM (Özel Veri Tipi) olarak tanımlıyoruz
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS movies (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     title VARCHAR(255) NOT NULL,
     description TEXT,
-    duration_minutes INTEGER NOT NULL, -- Film süresi (Seans çakışması için kritik)
+    duration_minutes INTEGER NOT NULL,
     release_date DATE,
     poster_url VARCHAR(512),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -53,8 +53,8 @@ CREATE TABLE IF NOT EXISTS cinemas (
 CREATE TABLE IF NOT EXISTS halls (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     cinema_id UUID NOT NULL REFERENCES cinemas(id) ON DELETE CASCADE,
-    name VARCHAR(100) NOT NULL, -- Örn: "Salon 1", "IMAX Salon"
-    seat_layout JSONB NOT NULL, -- Koltuk matrisini JSON tutuyoruz (Performans için)
+    name VARCHAR(100) NOT NULL,
+    seat_layout JSONB NOT NULL,
     total_seats INTEGER NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -65,7 +65,32 @@ CREATE TABLE IF NOT EXISTS showtimes (
     movie_id UUID NOT NULL REFERENCES movies(id) ON DELETE CASCADE,
     hall_id UUID NOT NULL REFERENCES halls(id) ON DELETE CASCADE,
     start_time TIMESTAMP WITH TIME ZONE NOT NULL,
-    end_time TIMESTAMP WITH TIME ZONE NOT NULL, -- start_time + duration_minutes + 20dk (Hazırlık)
+    end_time TIMESTAMP WITH TIME ZONE NOT NULL,
     price DECIMAL(10, 2) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ==========================================
+-- Epic 2.4: Rezervasyon ve Biletleme Tabloları
+-- ==========================================
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ticket_status') THEN
+        CREATE TYPE ticket_status AS ENUM ('PENDING', 'CONFIRMED', 'CANCELLED', 'REFUNDED');
+    END IF;
+END
+$$;
+
+CREATE TABLE IF NOT EXISTS tickets (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    showtime_id UUID NOT NULL REFERENCES showtimes(id) ON DELETE CASCADE,
+    seat_id VARCHAR(10) NOT NULL, -- Örn: "A1", "B4"
+    status ticket_status DEFAULT 'PENDING',
+    price DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    -- Bir koltuk aynı seans için yalnızca 1 kez oluşturulabilir (Unique Index)
+    CONSTRAINT unique_seat_showtime UNIQUE (showtime_id, seat_id)
 );

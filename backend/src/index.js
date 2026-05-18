@@ -6,6 +6,7 @@ const db = require('./config/db');
 // Route'lar
 const authRoutes = require('./routes/authRoutes');
 const catalogRoutes = require('./routes/catalogRoutes');
+const reservationRoutes = require('./routes/reservationRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,6 +19,7 @@ app.use(express.urlencoded({ extended: true }));
 // API Endpoint'leri
 app.use('/api/auth', authRoutes);
 app.use('/api/catalog', catalogRoutes);
+app.use('/api/reservations', reservationRoutes);
 
 // Health Check
 app.get('/health', (req, res) => {
