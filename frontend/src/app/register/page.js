@@ -1,10 +1,13 @@
 'use client';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 import api from '@/utils/api';
 
-export default function Register() {
+function RegisterForm() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const returnUrl = searchParams.get('returnUrl');
 
     const [formData, setFormData] = useState({
         firstName: '',
@@ -29,8 +32,17 @@ export default function Register() {
 
         try {
             await api.post('/auth/register', formData);
-            alert('Kayıt başarılı! Lütfen giriş yapın.');
-            router.push('/login');
+            
+            // Otomatik Login
+            const loginRes = await api.post('/auth/login', { email: formData.email, password: formData.password });
+            localStorage.setItem('token', loginRes.data.token);
+            localStorage.setItem('user', JSON.stringify(loginRes.data.user));
+
+            if (returnUrl) {
+                window.location.href = returnUrl;
+            } else {
+                window.location.href = '/';
+            }
         } catch (err) {
             setErrorMsg(err.response?.data?.error || 'Kayıt sırasında bir hata oluştu.');
         } finally {
@@ -133,9 +145,17 @@ export default function Register() {
                 </button>
                 <div style={{ textAlign: 'center', marginTop: '10px' }}>
                     <span style={{ color: 'var(--text-secondary)' }}>Zaten üye misiniz? </span>
-                    <a href="/login" style={{ color: 'var(--accent-color)', textDecoration: 'none' }}>Giriş Yap</a>
+                    <a href={`/login${returnUrl ? `?returnUrl=${returnUrl}` : ''}`} style={{ color: 'var(--accent-color)', textDecoration: 'none' }}>Giriş Yap</a>
                 </div>
             </form>
         </div>
+    );
+}
+
+export default function Register() {
+    return (
+        <Suspense fallback={<div style={{ textAlign: 'center' }}>Yükleniyor...</div>}>
+            <RegisterForm />
+        </Suspense>
     );
 }

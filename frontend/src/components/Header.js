@@ -30,7 +30,7 @@ export default function Header() {
             <div>
                 {user ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        <span style={{ color: 'white', fontWeight: 'bold' }}>Hoş geldin, {user.firstName}</span>
+                        <span style={{ color: 'white', fontWeight: 'bold' }}>Hoş geldin, {user.first_name}</span>
                         <button onClick={handleLogout} style={{
                             background: 'transparent',
                             border: '1px solid var(--accent-color)',

@@ -1,10 +1,17 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { createPortal } from 'react-dom';
 
 export default function GuestModal({ isOpen, onClose, showtimeId }) {
     const router = useRouter();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     if (!isOpen) return null;
+    if (!mounted) return null;
 
     const handleLogin = () => {
         router.push(`/login?returnUrl=/showtimes/${showtimeId}/tickets`);
@@ -15,7 +22,7 @@ export default function GuestModal({ isOpen, onClose, showtimeId }) {
         router.push(`/showtimes/${showtimeId}/tickets`);
     };
 
-    return (
+    return createPortal(
         <div style={{
             position: 'fixed',
             top: 0, left: 0, width: '100vw', height: '100vh',
@@ -66,6 +73,7 @@ export default function GuestModal({ isOpen, onClose, showtimeId }) {
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
