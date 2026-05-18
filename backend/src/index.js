@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const db = require('./config/db');
+const syncMoviesJob = require('./jobs/syncMoviesJob');
 
 // Route'lar
 const authRoutes = require('./routes/authRoutes');
@@ -33,6 +34,9 @@ async function startServer() {
     try {
         await db.query('SELECT NOW()');
         console.log('✅ PostgreSQL Veritabanı Bağlantısı Başarılı!');
+        
+        // Cron Job'ları başlat
+        syncMoviesJob.start();
         
         app.listen(PORT, () => {
             console.log(`🚀 SBRS Sunucusu http://localhost:${PORT} portunda çalışıyor.`);
