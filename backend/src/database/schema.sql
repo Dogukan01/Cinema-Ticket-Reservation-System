@@ -10,7 +10,7 @@ BEGIN
 END
 $$;
 
--- Kullanıcılar (Users) Tablosu
+-- Kullanıcılar (Users) Tablosu (Epic 2.1)
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     first_name VARCHAR(100) NOT NULL,
@@ -18,16 +18,54 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     role user_role DEFAULT 'customer',
-    
-    -- PII Verileri (AES-256-GCM ile şifrelenecek)
     identity_number VARCHAR(255), 
-    birth_date DATE, -- NVİ kontrolü için doğum tarihi
-    
-    -- Güvenlik (MFA)
+    birth_date DATE,
     is_mfa_enabled BOOLEAN DEFAULT FALSE,
     mfa_secret VARCHAR(255),
-    
-    -- Zaman damgaları
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ==========================================
+-- Epic 2.2: Katalog Servisi Tabloları
+-- ==========================================
+
+-- 1. Filmler (Movies) Tablosu
+CREATE TABLE IF NOT EXISTS movies (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    duration_minutes INTEGER NOT NULL, -- Film süresi (Seans çakışması için kritik)
+    release_date DATE,
+    poster_url VARCHAR(512),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. Sinemalar/Şubeler (Cinemas) Tablosu
+CREATE TABLE IF NOT EXISTS cinemas (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(255) NOT NULL,
+    location VARCHAR(512) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 3. Salonlar (Halls) Tablosu
+CREATE TABLE IF NOT EXISTS halls (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    cinema_id UUID NOT NULL REFERENCES cinemas(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL, -- Örn: "Salon 1", "IMAX Salon"
+    seat_layout JSONB NOT NULL, -- Koltuk matrisini JSON tutuyoruz (Performans için)
+    total_seats INTEGER NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 4. Seanslar (Showtimes) Tablosu
+CREATE TABLE IF NOT EXISTS showtimes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    movie_id UUID NOT NULL REFERENCES movies(id) ON DELETE CASCADE,
+    hall_id UUID NOT NULL REFERENCES halls(id) ON DELETE CASCADE,
+    start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    end_time TIMESTAMP WITH TIME ZONE NOT NULL, -- start_time + duration_minutes + 20dk (Hazırlık)
+    price DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
