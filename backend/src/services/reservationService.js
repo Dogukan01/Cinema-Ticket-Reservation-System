@@ -91,14 +91,14 @@ class ReservationService {
                 const lockOwner = await client.get(lockKey);
 
                 if (lockOwner !== userId) {
-                    throw new Error(\`\${seatId} numaralı koltuk kilitli değil veya kilidin süresi dolmuş. Lütfen koltuğu tekrar seçin.\`);
+                    throw new Error(`${seatId} numaralı koltuk kilitli değil veya kilidin süresi dolmuş. Lütfen koltuğu tekrar seçin.`);
                 }
 
                 // 2. Veritabanına PENDING biletini yaz (Eğer başkası DB'ye yazdıysa Unique constraint hata fırlatır)
-                const insertQuery = \`
+                const insertQuery = `
                     INSERT INTO tickets (user_id, showtime_id, seat_id, status, price)
                     VALUES ($1, $2, $3, 'PENDING', $4) RETURNING *
-                \`;
+                `;
                 const result = await dbClient.query(insertQuery, [userId, showtimeId, seatId, price]);
                 createdTickets.push(result.rows[0]);
 
