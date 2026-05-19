@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 
 export default function GuestModal({ isOpen, onClose, showtimeId }) {
     const navigate = useNavigate();
@@ -16,7 +17,7 @@ export default function GuestModal({ isOpen, onClose, showtimeId }) {
         onClose();
     };
 
-    return (
+    return createPortal(
         <div style={{
             position: 'fixed',
             top: 0, left: 0, width: '100vw', height: '100vh',
@@ -80,6 +81,8 @@ export default function GuestModal({ isOpen, onClose, showtimeId }) {
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
+
