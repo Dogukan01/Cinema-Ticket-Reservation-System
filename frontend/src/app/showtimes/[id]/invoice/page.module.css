@@ -1,0 +1,291 @@
+.invoiceContainer {
+    max-width: 700px;
+    margin: 30px auto;
+    padding: 20px;
+}
+
+.invoiceWrapper {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 40px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    box-sizing: border-box;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.cinemaLogo {
+    text-align: left;
+}
+
+.cinemaLogo h1 {
+    font-size: 3em;
+    margin: 0;
+}
+
+.cinemaLogo p {
+    margin: 0;
+}
+
+.receiptNumber {
+    text-align: right;
+}
+
+.receiptNumber p {
+    margin: 0;
+}
+
+.receiptNumber h2 {
+    margin: 5px 0 0 0;
+    letter-spacing: 1px;
+}
+
+.divider {
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--accent-color), transparent);
+    margin: 25px 0;
+    opacity: 0.5;
+}
+
+.section {
+    margin-bottom: 25px;
+}
+
+.sectionTitle {
+    color: var(--accent-color);
+    font-size: 1.1em;
+    margin-bottom: 15px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+}
+
+.infoGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.infoItem {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.label {
+    color: var(--text-secondary);
+    font-size: 0.85em;
+    margin: 0 0 8px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.value {
+    color: var(--text-primary);
+    margin: 0;
+    font-weight: 500;
+}
+
+.posterContainer {
+    flex-shrink: 0;
+}
+
+.seatsDisplay {
+    margin-bottom: 20px;
+}
+
+.seatsBox {
+    background: rgba(239, 68, 68, 0.1);
+    border: 2px solid var(--accent-color);
+    padding: 15px;
+    border-radius: 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 1.1em;
+    color: var(--accent-color);
+    font-weight: 600;
+    text-align: center;
+    letter-spacing: 2px;
+}
+
+.ticketsTable {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+.ticketsTable thead {
+    border-bottom: 2px solid var(--accent-color);
+}
+
+.ticketsTable th {
+    padding: 15px 10px;
+    text-align: left;
+    color: var(--accent-color);
+    font-weight: 800;
+    font-size: 0.9em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ticketsTable td {
+    padding: 12px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.seatCell {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    color: var(--accent-color);
+}
+
+.totalSection {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 20px;
+    border-radius: 8px;
+    border-left: 4px solid var(--accent-color);
+}
+
+.totalRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    color: var(--text-primary);
+}
+
+.totalRow:first-child {
+    padding-top: 0;
+}
+
+.totalRow:last-child {
+    padding-bottom: 0;
+}
+
+.footer {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.buttonGroup {
+    display: flex;
+    gap: 10px;
+    margin-top: 30px;
+    justify-content: center;
+}
+
+.buttonGroup button {
+    flex: 1;
+    max-width: 250px;
+}
+
+.loadingSpinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    border-top: 4px solid var(--accent-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Print Styles */
+@media print {
+    .invoiceContainer {
+        margin: 0;
+        padding: 0;
+    }
+
+    .invoiceWrapper {
+        background: white !important;
+        border: 1px solid #ccc !important;
+        box-shadow: none !important;
+        border-radius: 0;
+        page-break-inside: avoid;
+    }
+
+    .buttonGroup {
+        display: none;
+    }
+
+    .infoItem {
+        background: #f5f5f5 !important;
+        border: 1px solid #ddd !important;
+    }
+
+    .seatsBox {
+        background: #fff3f3 !important;
+        border: 2px solid #ef4444 !important;
+    }
+
+    .ticketsTable th,
+    .ticketsTable td {
+        border-color: #ddd !important;
+    }
+
+    .ticketsTable thead {
+        border-bottom-color: #ef4444 !important;
+        background: #f5f5f5 !important;
+    }
+
+    .totalSection {
+        background: #f5f5f5 !important;
+        border-left-color: #ef4444 !important;
+    }
+
+    .divider {
+        background: #ccc !important;
+        opacity: 1 !important;
+    }
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .invoiceWrapper {
+        padding: 25px;
+    }
+
+    .header {
+        flex-direction: column;
+        text-align: center;
+        gap: 20px;
+    }
+
+    .receiptNumber {
+        text-align: center;
+    }
+
+    .infoGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .buttonGroup {
+        flex-direction: column;
+    }
+
+    .buttonGroup button {
+        max-width: 100%;
+    }
+
+    .buttonGroup button:not(:first-child) {
+        margin-left: 0;
+    }
+}

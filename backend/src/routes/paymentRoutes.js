@@ -6,5 +6,6 @@ const router = express.Router();
 
 // Hem Giriş Yapmış Hem Anonim Kullanıcılar
 router.post('/pay', extractUserOrGuest, paymentController.pay);
+router.get('/invoice/:showtimeId', extractUserOrGuest, paymentController.getInvoice);
 
 module.exports = router;

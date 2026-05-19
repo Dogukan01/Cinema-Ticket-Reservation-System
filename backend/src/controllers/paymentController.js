@@ -38,6 +38,29 @@ class PaymentController {
             return res.status(500).json({ error: error.message });
         }
     }
+
+    /**
+     * Ödenen biletlerin detaylı fatura bilgilerini getirir
+     */
+    async getInvoice(req, res) {
+        try {
+            const userId = req.user.id || null;
+            const guestId = req.user.guestId || null;
+            const { showtimeId } = req.params;
+
+            if (!showtimeId) {
+                return res.status(400).json({ error: 'showtimeId parametresi zorunludur.' });
+            }
+
+            const invoiceDetails = await paymentService.getInvoiceDetails(userId, guestId, showtimeId);
+
+            return res.status(200).json(invoiceDetails);
+
+        } catch (error) {
+            console.error('Fatura Bilgisi Hatası:', error.message);
+            return res.status(500).json({ error: error.message });
+        }
+    }
 }
 
 module.exports = new PaymentController();

@@ -83,6 +83,80 @@ class PaymentService {
             dbClient.release();
         }
     }
+
+    /**
+     * Ödenen biletlerin detaylı fatura bilgilerini getirir
+     * (Film, seans, sinema, koltuk vb. bilgileri)
+     */
+    async getInvoiceDetails(userId, guestId, showtimeId) {
+        // CONFIRMED statüsündeki biletleri al
+        let ticketsResult;
+        
+        if (userId) {
+            ticketsResult = await db.query(
+                `SELECT t.*, s.start_time, s.price as showtime_price,
+                        m.title as movie_title, m.duration_minutes, m.poster_url,
+                        c.name as cinema_name, c.location as cinema_location,
+                        h.name as hall_name
+                 FROM tickets t
+                 JOIN showtimes s ON t.showtime_id = s.id
+                 JOIN movies m ON s.movie_id = m.id
+                 JOIN halls h ON s.hall_id = h.id
+                 JOIN cinemas c ON h.cinema_id = c.id
+                 WHERE t.user_id = $1 AND t.showtime_id = $2 AND t.status = 'CONFIRMED'
+                 ORDER BY t.created_at DESC`,
+                [userId, showtimeId]
+            );
+        } else if (guestId) {
+            ticketsResult = await db.query(
+                `SELECT t.*, s.start_time, s.price as showtime_price,
+                        m.title as movie_title, m.duration_minutes, m.poster_url,
+                        c.name as cinema_name, c.location as cinema_location,
+                        h.name as hall_name
+                 FROM tickets t
+                 JOIN showtimes s ON t.showtime_id = s.id
+                 JOIN movies m ON s.movie_id = m.id
+                 JOIN halls h ON s.hall_id = h.id
+                 JOIN cinemas c ON h.cinema_id = c.id
+                 WHERE t.guest_id = $1 AND t.showtime_id = $2 AND t.status = 'CONFIRMED'
+                 ORDER BY t.created_at DESC`,
+                [guestId, showtimeId]
+            );
+        } else {
+            throw new Error('Kimlik bilgisi bulunamadı.');
+        }
+
+        if (ticketsResult.rows.length === 0) {
+            throw new Error('Fatura bilgisi bulunamadı.');
+        }
+
+        const tickets = ticketsResult.rows;
+        const firstTicket = tickets[0];
+
+        // Toplam fiyat hesapla
+        const totalPrice = tickets.reduce((sum, ticket) => sum + parseFloat(ticket.price), 0);
+
+        return {
+            invoiceDate: new Date().toISOString(),
+            movieTitle: firstTicket.movie_title,
+            movieDuration: firstTicket.duration_minutes,
+            moviePoster: firstTicket.poster_url,
+            cinemaName: firstTicket.cinema_name,
+            cinemaLocation: firstTicket.cinema_location,
+            hallName: firstTicket.hall_name,
+            showtimeId: showtimeId,
+            startTime: firstTicket.start_time,
+            tickets: tickets.map(t => ({
+                id: t.id,
+                seatId: t.seat_id,
+                type: t.ticket_type,
+                price: t.price,
+                status: t.status
+            })),
+            totalPrice: totalPrice,
+            ticketCount: tickets.length
+        };
+    }
 }
 
 module.exports = new PaymentService();

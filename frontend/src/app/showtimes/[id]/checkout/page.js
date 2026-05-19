@@ -27,10 +27,9 @@ export default function Checkout({ params }) {
                 cvv
             });
 
-            // Başarılı ödeme -> Sonuç Ekranına
-            alert('Ödeme Başarılı! Fatura numaranız: ' + res.data.receiptId);
-            // Şimdilik ana sayfaya dön, sonra Invoice sayfası eklenebilir
-            router.push('/');
+            // Başarılı ödeme -> Fatura Sayfasına
+            localStorage.setItem('receiptId', res.data.receiptId);
+            router.push(`/showtimes/${showtimeId}/invoice`);
             
         } catch (error) {
             setErrorMsg(error.response?.data?.error || 'Ödeme sırasında hata oluştu.');
