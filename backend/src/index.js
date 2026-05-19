@@ -15,6 +15,7 @@ const catalogRoutes = require('./routes/catalogRoutes');
 const reservationRoutes = require('./routes/reservationRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 const { Server } = require('socket.io');
 const http = require('http');
@@ -64,6 +65,7 @@ app.use('/api/catalog', catalogRoutes);
 app.use('/api/reservations', reservationRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/user', userRoutes);
 
 // Merkezi Hata Yakalama Middleware'i
 app.use(errorHandler);

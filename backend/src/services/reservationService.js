@@ -38,11 +38,15 @@ class ReservationService {
         
         // Performans için KEYS yerine SCAN (Iterator) komutu kullanılarak kilitleri buluyoruz
         const lockedKeys = [];
-        for await (const key of client.scanIterator({
+        for await (const item of client.scanIterator({
             MATCH: lockPattern,
             COUNT: 100
         })) {
-            lockedKeys.push(key);
+            if (Array.isArray(item)) {
+                lockedKeys.push(...item);
+            } else if (typeof item === 'string') {
+                lockedKeys.push(item);
+            }
         }
         
         const redisLockedSeats = lockedKeys.map(key => {

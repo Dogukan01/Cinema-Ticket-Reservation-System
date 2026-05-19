@@ -36,6 +36,17 @@ export default function Header() {
                 {user ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                         <span style={{ color: 'white', fontWeight: 'bold' }}>Hoş geldin, {user.first_name || user.firstName}</span>
+                        <Link to="/profile" style={{
+                            background: 'rgba(255,255,255,0.1)',
+                            border: '1px solid var(--glass-border)',
+                            color: 'white',
+                            padding: '8px 16px',
+                            borderRadius: '8px',
+                            textDecoration: 'none',
+                            fontWeight: '600'
+                        }}>
+                            Profilim
+                        </Link>
                         <button onClick={handleLogout} style={{
                             background: 'transparent',
                             border: '1px solid var(--accent-color)',

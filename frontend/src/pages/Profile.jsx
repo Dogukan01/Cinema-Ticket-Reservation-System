@@ -1,0 +1,117 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import api from '../utils/api';
+import { toast } from 'react-hot-toast';
+
+export default function Profile() {
+    const navigate = useNavigate();
+    const [profile, setProfile] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            navigate('/login');
+            return;
+        }
+
+        const fetchProfile = async () => {
+            try {
+                const res = await api.get('/user/profile');
+                setProfile(res.data);
+            } catch (error) {
+                toast.error('Profil bilgileri yüklenirken bir hata oluştu.');
+                if (error.response?.status === 401) {
+                    navigate('/login');
+                }
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchProfile();
+    }, [navigate]);
+
+    if (loading) {
+        return <div style={{ textAlign: 'center', padding: '50px', color: 'white' }}>Yükleniyor...</div>;
+    }
+
+    if (!profile) return null;
+
+    const { user, tickets } = profile;
+
+    return (
+        <div style={{ maxWidth: '1000px', margin: '40px auto', padding: '20px' }}>
+            <h1 style={{ color: 'var(--accent-color)', marginBottom: '30px' }}>Profilim</h1>
+            
+            <div className="glass-panel" style={{ padding: '30px', marginBottom: '40px' }}>
+                <h2 style={{ color: 'white', marginBottom: '20px' }}>Kişisel Bilgiler</h2>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    <div>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>Ad Soyad</p>
+                        <p style={{ color: 'white', fontSize: '1.2rem' }}>{user.first_name} {user.last_name}</p>
+                    </div>
+                    <div>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>E-Posta</p>
+                        <p style={{ color: 'white', fontSize: '1.2rem' }}>{user.email}</p>
+                    </div>
+                    <div>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>Kayıt Tarihi</p>
+                        <p style={{ color: 'white', fontSize: '1.2rem' }}>{new Date(user.created_at).toLocaleDateString('tr-TR')}</p>
+                    </div>
+                    <div>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>Hesap Türü</p>
+                        <p style={{ color: 'var(--accent-color)', fontSize: '1.2rem', textTransform: 'capitalize' }}>{user.role}</p>
+                    </div>
+                </div>
+            </div>
+
+            <h2 style={{ color: 'white', marginBottom: '20px' }}>Geçmiş Biletlerim</h2>
+            {tickets.length === 0 ? (
+                <div className="glass-panel" style={{ padding: '40px', textAlign: 'center' }}>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem' }}>Henüz satın alınmış bir biletiniz bulunmuyor.</p>
+                </div>
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    {tickets.map(ticket => (
+                        <div key={ticket.ticket_id} className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '20px' }}>
+                            <img 
+                                src={ticket.poster_url || 'https://via.placeholder.com/100x150'} 
+                                alt={ticket.movie_title}
+                                style={{ width: '80px', height: '120px', objectFit: 'cover', borderRadius: '8px' }}
+                            />
+                            <div style={{ flex: 1 }}>
+                                <h3 style={{ color: 'white', marginBottom: '10px' }}>{ticket.movie_title}</h3>
+                                <p style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>
+                                    {ticket.cinema_name} - {ticket.hall_name}
+                                </p>
+                                <p style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>
+                                    Seans: <span style={{ color: 'white' }}>{new Date(ticket.start_time).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                                </p>
+                                <p style={{ color: 'var(--text-secondary)' }}>
+                                    Koltuk: <span style={{ color: 'var(--accent-color)', fontWeight: 'bold' }}>{ticket.seat_id}</span> 
+                                    <span style={{ margin: '0 10px' }}>|</span> 
+                                    Tür: {ticket.ticket_type === 'ADULT' ? 'Yetişkin' : 'Öğrenci'}
+                                </p>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                                <p style={{ color: '#10b981', fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '10px' }}>
+                                    {parseFloat(ticket.price).toFixed(2)} ₺
+                                </p>
+                                <span style={{ 
+                                    padding: '5px 10px', 
+                                    background: ticket.status === 'CANCELLED' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)', 
+                                    color: ticket.status === 'CANCELLED' ? '#ef4444' : '#10b981', 
+                                    borderRadius: '5px',
+                                    fontSize: '0.9rem'
+                                }}>
+                                    {ticket.status === 'CANCELLED' ? 'İPTAL' : 'GEÇERLİ'}
+                                </span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}

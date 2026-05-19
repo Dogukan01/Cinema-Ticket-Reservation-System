@@ -65,7 +65,7 @@ class AuthService {
             role: user.role
         };
 
-        const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: '15m' });
+        const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
         const refreshToken = jwt.sign(payload, process.env.REFRESH_TOKEN_SECRET || 'SBRS_REFRESH_SECRET', { expiresIn: '7d' });
 
         // Şifrelenmiş verileri client'a dönmemek için çıkarıyoruz

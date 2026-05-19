@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 export default function Invoice() {
     const { id: showtimeId } = useParams();
@@ -61,8 +63,28 @@ export default function Invoice() {
         window.print();
     };
 
-    const handleDownload = () => {
-        alert('PDF indirme özelliği yakında eklenecek.');
+    const handleDownload = async () => {
+        try {
+            const element = document.getElementById('invoice-content');
+            if (!element) return;
+            
+            const canvas = await html2canvas(element, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#1a1f2e' // Dark tema arka planı
+            });
+            
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+            
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            pdf.save(`SBRS_Bilet_${receiptId || 'indir'}.pdf`);
+        } catch (error) {
+            console.error('PDF oluşturma hatası:', error);
+            alert('Bilet indirilirken bir hata oluştu.');
+        }
     };
 
     const handleHome = () => {
