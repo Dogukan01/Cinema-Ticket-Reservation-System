@@ -10,13 +10,22 @@ export default function MoviesList() {
     const [selectedMovie, setSelectedMovie] = useState(null);
 
     useEffect(() => {
+        const cached = sessionStorage.getItem('movies_list_cache');
+        if (cached) {
+            setMovies(JSON.parse(cached));
+            setLoading(false);
+        }
+
         const fetchMovies = async () => {
             try {
                 const res = await api.get('/catalog/movies');
                 setMovies(res.data);
+                sessionStorage.setItem('movies_list_cache', JSON.stringify(res.data));
             } catch (err) {
                 console.error('API Error:', err);
-                setErrorMsg('Filmler yüklenirken bir sorun oluştu. Lütfen daha sonra tekrar deneyin.');
+                if (!cached) {
+                    setErrorMsg('Filmler yüklenirken bir sorun oluştu. Lütfen daha sonra tekrar deneyin.');
+                }
             } finally {
                 setLoading(false);
             }
@@ -24,9 +33,23 @@ export default function MoviesList() {
         fetchMovies();
     }, []);
 
+    useEffect(() => {
+        if (!loading && movies.length > 0) {
+            const savedScroll = sessionStorage.getItem('movies_list_scroll_pos');
+            if (savedScroll) {
+                setTimeout(() => {
+                    window.scrollTo(0, parseInt(savedScroll, 10));
+                    sessionStorage.removeItem('movies_list_scroll_pos');
+                }, 100);
+            }
+        }
+    }, [loading, movies]);
+
     const handleCardClick = (movie) => {
+        sessionStorage.setItem('movies_list_scroll_pos', window.scrollY);
         navigate(`/movies/${movie.id}`);
     };
+
 
     if (loading) {
         return (

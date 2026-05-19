@@ -52,6 +52,15 @@ class CatalogService {
         if (movieResult.rows.length === 0) throw new Error('Film bulunamadı.');
         const movie = movieResult.rows[0];
 
+        // TMDB detay zenginleştirmesi
+        let enrichment = null;
+        try {
+            const tmdbService = require('./tmdbService');
+            enrichment = await tmdbService.enrichMovieDetails(movie.title);
+        } catch (err) {
+            console.error('TMDB Enrichment failed:', err.message);
+        }
+
         // 2. Bu filme ait Seanslar (Sinema ve Salon bilgileriyle birleştirilmiş)
         const showtimesQuery = `
             SELECT s.id as showtime_id, s.start_time, s.price, 
@@ -67,8 +76,10 @@ class CatalogService {
 
         const finalData = {
             ...movie,
+            ...enrichment,
             showtimes: showtimesResult.rows
         };
+
 
         if (redis.isAvailable()) {
             const client = redis.getClient();

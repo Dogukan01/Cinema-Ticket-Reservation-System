@@ -60,6 +60,48 @@ class TMDBService {
             return this.getFallbackMovies();
         }
     }
+    async enrichMovieDetails(title) {
+        const apiKey = process.env.TMDB_API_KEY;
+        if (!apiKey || apiKey === 'YOUR_TMDB_API_KEY_HERE') {
+            return null;
+        }
+
+        try {
+            // 1. Search movie by title
+            const searchRes = await axios.get(`https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(title)}&language=tr-TR`);
+            if (!searchRes.data.results || searchRes.data.results.length === 0) return null;
+
+            const tmdbMovieId = searchRes.data.results[0].id;
+
+            // 2. Fetch full details with videos & credits
+            const detailRes = await axios.get(`https://api.themoviedb.org/3/movie/${tmdbMovieId}?api_key=${apiKey}&language=tr-TR&append_to_response=videos,credits`);
+            const data = detailRes.data;
+
+            // Extract director
+            const director = data.credits?.crew?.find(c => c.job === 'Director')?.name || 'Bilinmiyor';
+
+            // Extract cast (first 5 actors)
+            const cast = data.credits?.cast?.slice(0, 5).map(c => c.name).join(', ') || 'Bilinmiyor';
+
+            // Extract genres
+            const genres = data.genres?.map(g => g.name).join(', ') || 'Bilinmiyor';
+
+            // Extract trailer YouTube key
+            const trailer = data.videos?.results?.find(v => v.type === 'Trailer' && v.site === 'YouTube')?.key || null;
+
+            return {
+                backdropUrl: data.backdrop_path ? `https://image.tmdb.org/t/p/original${data.backdrop_path}` : null,
+                rating: data.vote_average ? data.vote_average.toFixed(1) : null,
+                director,
+                cast,
+                genres,
+                trailerKey: trailer
+            };
+        } catch (error) {
+            console.error('[TMDB ERROR] enrichment failed for:', title, error.message);
+            return null;
+        }
+    }
 }
 
 module.exports = new TMDBService();
