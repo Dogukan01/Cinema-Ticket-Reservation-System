@@ -1,6 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const db = require('./config/db');
 const syncMoviesJob = require('./jobs/syncMoviesJob');
 
@@ -13,10 +15,23 @@ const paymentRoutes = require('./routes/paymentRoutes');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Güvenlik Middleware'leri
+app.use(helmet()); // HTTP başlıklarını güvenli hale getirir
+
+// Rate Limiting (Brute force & DDOS koruması)
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 dakika
+    max: 100, // 15 dakika içinde aynı IP'den en fazla 100 istek
+    message: { error: 'Çok fazla istek attınız, lütfen daha sonra tekrar deneyin.' }
+});
+
 // Middleware'ler
 app.use(cors());
 app.use(express.json()); // JSON body parse
 app.use(express.urlencoded({ extended: true }));
+
+// Tüm /api rotalarına rate limit uygula
+app.use('/api', apiLimiter);
 
 // API Endpoint'leri
 app.use('/api/auth', authRoutes);
