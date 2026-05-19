@@ -25,16 +25,7 @@ export default function MoviesList() {
     }, []);
 
     const handleCardClick = (movie) => {
-        setSelectedMovie(movie);
-    };
-
-    const handleCloseModal = () => {
-        setSelectedMovie(null);
-    };
-
-    const handleBuyTicket = (movieId) => {
-        setSelectedMovie(null);
-        navigate(`/movies/${movieId}`);
+        navigate(`/movies/${movie.id}`);
     };
 
     if (loading) {
@@ -165,118 +156,7 @@ export default function MoviesList() {
                 </div>
             )}
 
-            {/* Premium Details Modal */}
-            {selectedMovie && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: 'rgba(0, 0, 0, 0.85)',
-                    backdropFilter: 'blur(10px)',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    zIndex: 1000,
-                    padding: '20px',
-                    animation: 'fadeIn 0.25s ease'
-                }} onClick={handleCloseModal}>
-                    <div style={{
-                        background: 'rgba(18, 18, 18, 0.75)',
-                        border: '1px solid var(--glass-border)',
-                        borderRadius: '24px',
-                        padding: '40px',
-                        maxWidth: '850px',
-                        width: '100%',
-                        boxShadow: '0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(239, 68, 68, 0.1)',
-                        position: 'relative',
-                        display: 'flex',
-                        gap: '35px',
-                        flexWrap: 'wrap',
-                        animation: 'scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
-                    }} onClick={e => e.stopPropagation()}>
-                        
-                        {/* Close button */}
-                        <button 
-                            onClick={handleCloseModal}
-                            style={{
-                                position: 'absolute',
-                                top: '20px',
-                                right: '20px',
-                                background: 'rgba(255, 255, 255, 0.05)',
-                                border: '1px solid var(--glass-border)',
-                                borderRadius: '50%',
-                                width: '36px',
-                                height: '36px',
-                                color: 'white',
-                                fontSize: '1rem',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                transition: 'all 0.2s'
-                            }}
-                            onMouseOver={e => e.currentTarget.style.backgroundColor = 'var(--accent-color)'}
-                            onMouseOut={e => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'}
-                        >
-                            ✕
-                        </button>
 
-                        {/* Left: Poster */}
-                        <div style={{ flex: '1 1 250px', maxWidth: '280px' }}>
-                            <img 
-                                src={selectedMovie.poster_url || '/placeholder-poster.jpg'} 
-                                alt={selectedMovie.title} 
-                                style={{
-                                    width: '100%',
-                                    borderRadius: '16px',
-                                    boxShadow: '0 8px 30px rgba(0,0,0,0.6)',
-                                    border: '1px solid rgba(255,255,255,0.08)'
-                                }}
-                            />
-                        </div>
-
-                        {/* Right: Info */}
-                        <div style={{ flex: '2 1 400px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                            <div>
-                                <h2 style={{ fontSize: '2.2rem', color: 'white', marginBottom: '15px', fontWeight: '800', lineHeight: 1.2 }}>
-                                    {selectedMovie.title}
-                                </h2>
-                                
-                                <div style={{ display: 'flex', gap: '20px', marginBottom: '25px', fontSize: '0.95rem' }}>
-                                    <span style={{ color: 'var(--text-secondary)' }}>⏳ Süre: <strong style={{ color: '#fff' }}>{selectedMovie.duration_minutes} Dakika</strong></span>
-                                    <span style={{ color: 'var(--text-secondary)' }}>📅 Vizyon: <strong style={{ color: '#fff' }}>{selectedMovie.release_date ? new Date(selectedMovie.release_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}</strong></span>
-                                </div>
-
-                                <h4 style={{ color: 'var(--accent-color)', fontSize: '1rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px', fontWeight: 'bold' }}>Özet</h4>
-                                <p style={{ fontSize: '1.05rem', lineHeight: '1.7', color: 'rgba(255, 255, 255, 0.85)', marginBottom: '30px', maxHeight: '220px', overflowY: 'auto', paddingRight: '10px' }}>
-                                    {selectedMovie.description || 'Bu film için detaylı açıklama bulunmuyor.'}
-                                </p>
-                            </div>
-
-                            <button 
-                                className="btn-primary" 
-                                onClick={() => handleBuyTicket(selectedMovie.id)}
-                                style={{
-                                    width: '100%',
-                                    padding: '16px',
-                                    fontSize: '1.15rem',
-                                    fontWeight: 'bold',
-                                    borderRadius: '12px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '8px',
-                                    boxShadow: '0 6px 20px rgba(239, 68, 68, 0.4)'
-                                }}
-                            >
-                                🎟️ Hızlı Bilet Al & Seans Seç
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* CSS Keyframes */}
             <style>{`

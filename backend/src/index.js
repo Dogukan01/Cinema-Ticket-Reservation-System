@@ -5,6 +5,8 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const db = require('./config/db');
 const syncMoviesJob = require('./jobs/syncMoviesJob');
+const cleanupPendingTicketsJob = require('./jobs/cleanupPendingTicketsJob');
+const errorHandler = require('./middleware/errorHandler');
 
 // Route'lar
 const authRoutes = require('./routes/authRoutes');
@@ -12,7 +14,27 @@ const catalogRoutes = require('./routes/catalogRoutes');
 const reservationRoutes = require('./routes/reservationRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 
+const { Server } = require('socket.io');
+const http = require('http');
+
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: "http://localhost:3001",
+        methods: ["GET", "POST"]
+    }
+});
+
+app.set('io', io); // Controllers içinde kullanmak için
+
+io.on('connection', (socket) => {
+    console.log('Yeni bir WebSocket bağlantısı:', socket.id);
+    socket.on('join_showtime', (showtimeId) => {
+        socket.join(`showtime_${showtimeId}`);
+    });
+});
+
 const PORT = process.env.PORT || 3000;
 
 // Güvenlik Middleware'leri
@@ -39,6 +61,9 @@ app.use('/api/catalog', catalogRoutes);
 app.use('/api/reservations', reservationRoutes);
 app.use('/api/payment', paymentRoutes);
 
+// Merkezi Hata Yakalama Middleware'i
+app.use(errorHandler);
+
 // Health Check
 app.get('/health', (req, res) => {
     res.json({ status: 'UP', message: 'SBRS Backend API çalışıyor.' });
@@ -57,8 +82,10 @@ async function startServer() {
         
         // Cron Job'ları başlat
         syncMoviesJob.start();
+        cleanupPendingTicketsJob.start();
         
-        app.listen(PORT, () => {
+        // Sunucuyu başlat
+        server.listen(PORT, () => {
             console.log(`🚀 SBRS Sunucusu http://localhost:${PORT} portunda çalışıyor.`);
         });
     } catch (error) {

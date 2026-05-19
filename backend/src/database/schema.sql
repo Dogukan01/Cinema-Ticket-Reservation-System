@@ -96,3 +96,13 @@ CREATE TABLE IF NOT EXISTS tickets (
     -- Bir koltuk aynı seans için yalnızca 1 kez oluşturulabilir (Unique Index)
     CONSTRAINT unique_seat_showtime UNIQUE (showtime_id, seat_id)
 );
+
+-- ==========================================
+-- Epic 2.5: Performans İyileştirmeleri (İndeksler)
+-- ==========================================
+
+CREATE INDEX IF NOT EXISTS idx_showtimes_movie_id ON showtimes(movie_id);
+CREATE INDEX IF NOT EXISTS idx_showtimes_hall_id ON showtimes(hall_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_showtime_id ON tickets(showtime_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_user_id ON tickets(user_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status);

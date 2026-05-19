@@ -278,59 +278,20 @@ export default function MovieDetails() {
                 flexWrap: 'nowrap'
             }}>
                 
-                {/* Column 1: Film Seçimi (Lists All Movies) */}
-                <div style={{ flex: '1.1 1 0px', minWidth: '320px', height: '600px', display: 'flex', flexDirection: 'column' }} className="glass-panel">
-                    <div style={{ padding: '20px 20px 10px 20px' }}>
-                        <h3 style={{ margin: 0, borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px', fontSize: '1.1rem', color: 'var(--accent-color)', fontWeight: '800', letterSpacing: '0.5px' }}>
-                            1. Film Seçimi
-                        </h3>
-                    </div>
-                    <div className="scroll-column" style={{ flexGrow: 1, padding: '0 20px 20px 20px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            {moviesList.map(movie => {
-                                const isActive = movie.id === parseInt(activeMovieId);
-                                return (
-                                    <div
-                                        key={movie.id}
-                                        onClick={() => handleMovieChange(movie.id)}
-                                        style={{
-                                            display: 'flex',
-                                            gap: '12px',
-                                            padding: '12px',
-                                            background: isActive ? 'rgba(239, 68, 68, 0.1)' : 'rgba(255, 255, 255, 0.02)',
-                                            border: isActive ? '2px solid var(--accent-color)' : '1px solid var(--glass-border)',
-                                            borderRadius: '10px',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.25s ease',
-                                            boxShadow: isActive ? '0 0 10px rgba(239, 68, 68, 0.15)' : 'none'
-                                        }}
-                                        onMouseOver={e => {
-                                            if (!isActive) {
-                                                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-                                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
-                                            }
-                                        }}
-                                        onMouseOut={e => {
-                                            if (!isActive) {
-                                                e.currentTarget.style.borderColor = 'var(--glass-border)';
-                                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)';
-                                            }
-                                        }}
-                                    >
-                                        <img 
-                                            src={movie.poster_url || '/placeholder-poster.jpg'} 
-                                            alt={movie.title}
-                                            style={{ width: '50px', height: '75px', objectFit: 'cover', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}
-                                        />
-                                        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                            <h4 style={{ margin: '0 0 4px 0', color: '#fff', fontSize: '0.95rem', fontWeight: '700', lineHeight: '1.2' }}>{movie.title}</h4>
-                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>⏳ {movie.duration_minutes} Dakika</span>
-                                            {isActive && <span style={{ fontSize: '0.75rem', color: 'var(--accent-color)', fontWeight: 'bold', marginTop: '2px' }}>Seçili Film</span>}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                {/* Column 1: Seçilen Film */}
+                <div style={{ flex: '0.8 1 0px', minWidth: '250px', height: '600px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }} className="glass-panel">
+                    <div style={{ padding: '20px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        {activeMovie && (
+                            <>
+                                <img 
+                                    src={activeMovie.poster_url || '/placeholder-poster.jpg'} 
+                                    alt={activeMovie.title}
+                                    style={{ width: '100%', maxWidth: '220px', height: 'auto', borderRadius: '12px', border: '3px solid var(--accent-color)', boxShadow: '0 0 20px rgba(239, 68, 68, 0.5)', marginBottom: '20px' }}
+                                />
+                                <h2 style={{ color: '#fff', fontSize: '1.4rem', textAlign: 'center', marginBottom: '10px' }}>{activeMovie.title}</h2>
+                                <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>⏳ {activeMovie.duration_minutes} Dakika</span>
+                            </>
+                        )}
                     </div>
                 </div>
 

@@ -17,6 +17,10 @@ class SeatLockController {
       const isLocked = await seatLockService.lockSeat(showtimeId, seatId, userId);
 
       if (isLocked) {
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`showtime_${showtimeId}`).emit('seat_locked', { seatId });
+        }
         return res.status(200).json({ message: 'Koltuk başarıyla kilitlendi.', expiresIn: 600 });
       } else {
         return res.status(409).json({ error: 'Koltuk şu anda başka bir kullanıcı tarafından işlem görüyor (kilitli).' });
@@ -42,6 +46,10 @@ class SeatLockController {
       const isUnlocked = await seatLockService.unlockSeat(showtimeId, seatId, userId);
 
       if (isUnlocked) {
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`showtime_${showtimeId}`).emit('seat_unlocked', { seatId });
+        }
         return res.status(200).json({ message: 'Koltuk kilidi başarıyla açıldı.' });
       } else {
         return res.status(403).json({ error: 'Bu koltuğun kilidini açma yetkiniz yok veya kilit süresi dolmuş.' });

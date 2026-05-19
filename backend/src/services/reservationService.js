@@ -36,8 +36,14 @@ class ReservationService {
         const client = redis.getClient();
         const lockPattern = `seat_lock:${showtimeId}:*`;
         
-        // SCAN veya KEYS komutu ile kilitleri bul (Burada performans için KEYS kullanıyoruz, gerçekte SCAN önerilir)
-        const lockedKeys = await client.keys(lockPattern);
+        // Performans için KEYS yerine SCAN (Iterator) komutu kullanılarak kilitleri buluyoruz
+        const lockedKeys = [];
+        for await (const key of client.scanIterator({
+            MATCH: lockPattern,
+            COUNT: 100
+        })) {
+            lockedKeys.push(key);
+        }
         
         const redisLockedSeats = lockedKeys.map(key => {
             // key yapısı: seat_lock:showtimeId:seatId

@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import Header from './components/Header';
 import MoviesList from './pages/MoviesList';
 import MovieDetails from './pages/MovieDetails';
@@ -13,6 +14,7 @@ import Register from './pages/Register';
 function App() {
   return (
     <Router>
+      <Toaster position="top-right" />
       <Header />
       <main style={{ padding: '40px 8%', maxWidth: '1400px', margin: '0 auto' }}>
         <Routes>

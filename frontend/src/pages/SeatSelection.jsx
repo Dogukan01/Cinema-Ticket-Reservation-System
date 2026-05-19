@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import BookingSteps from '../components/BookingSteps';
+import SeatLegend from '../components/SeatLegend';
+import { toast } from 'react-hot-toast';
 
 export default function SeatSelection() {
     const { id: showtimeId } = useParams();
@@ -78,24 +80,24 @@ export default function SeatSelection() {
         if (!isCurrentlySelected) {
             // Check ticket count limit
             if (selectedSeats.length >= totalExpected) {
-                setErrorMsg(`En fazla seçtiğiniz bilet sayısı kadar (${totalExpected} adet) koltuk seçebilirsiniz.`);
+                toast.error(`En fazla seçtiğiniz bilet sayısı kadar (${totalExpected} adet) koltuk seçebilirsiniz.`);
                 return;
             }
 
             try {
                 await api.post('/reservations/lock', { showtimeId, seatId });
                 setSelectedSeats([...selectedSeats, seatId]);
-                setErrorMsg('');
+                // Başarılı
             } catch (err) {
                 if (err.response?.status === 409) {
-                    setErrorMsg('Bu koltuk şu an başka bir müşteri tarafından kilitlendi.');
+                    toast.error('Bu koltuk şu an başka bir müşteri tarafından kilitlendi.');
                     // Update layout to make it unavailable
                     setSeatData(prev => ({ 
                         ...prev, 
                         unavailableSeats: [...new Set([...prev.unavailableSeats, seatId])] 
                     }));
                 } else {
-                    setErrorMsg(err.response?.data?.error || 'Koltuk kilitlenirken bir hata oluştu.');
+                    toast.error(err.response?.data?.error || 'Koltuk kilitlenirken bir hata oluştu.');
                 }
             }
         } else {
@@ -103,16 +105,16 @@ export default function SeatSelection() {
             try {
                 await api.post('/reservations/unlock', { showtimeId, seatId });
                 setSelectedSeats(selectedSeats.filter(s => s !== seatId));
-                setErrorMsg('');
+                // Başarılı
             } catch (err) {
-                setErrorMsg('Koltuk kilidi açılırken hata oluştu.');
+                toast.error('Koltuk kilidi açılırken hata oluştu.');
             }
         }
     };
 
     const handleReserve = async () => {
         if (selectedSeats.length !== totalExpected) {
-            setErrorMsg(`Lütfen tam olarak ${totalExpected} adet koltuk seçiniz.`);
+            toast.error(`Lütfen tam olarak ${totalExpected} adet koltuk seçiniz.`);
             return;
         }
         
@@ -139,7 +141,7 @@ export default function SeatSelection() {
             setSelectedSeats([]);
             navigate(`/showtimes/${showtimeId}/checkout`);
         } catch (err) {
-            setErrorMsg(err.response?.data?.error || 'Rezervasyon işlemi başarısız oldu.');
+            toast.error(err.response?.data?.error || 'Rezervasyon işlemi başarısız oldu.');
         }
     };
 
@@ -200,12 +202,6 @@ export default function SeatSelection() {
 
             <h1 style={{ color: 'var(--accent-color)', marginBottom: '30px' }}>Koltuk Seçimi</h1>
 
-            {errorMsg && (
-                <div style={{ background: 'rgba(127, 29, 29, 0.5)', border: '1px solid #ef4444', color: 'white', padding: '12px 20px', borderRadius: '10px', marginBottom: '25px', display: 'inline-block', maxWidth: '600px' }}>
-                    {errorMsg}
-                </div>
-            )}
-
             {/* Screen */}
             <div className="cinema-screen">
                 <div className="screen-text">PERDE</div>
@@ -246,20 +242,7 @@ export default function SeatSelection() {
             </div>
 
             {/* Legend */}
-            <div className="seat-legend">
-                <div className="legend-item">
-                    <div className="legend-box" style={{ background: 'rgba(255, 255, 255, 0.08)', border: '1px solid rgba(255, 255, 255, 0.15)' }}></div>
-                    <span>Boş</span>
-                </div>
-                <div className="legend-item">
-                    <div className="legend-box" style={{ background: '#eab308' }}></div>
-                    <span>Seçiminiz</span>
-                </div>
-                <div className="legend-item">
-                    <div className="legend-box" style={{ background: '#334155' }}></div>
-                    <span>Dolu / Kilitli</span>
-                </div>
-            </div>
+            <SeatLegend />
 
             {/* Action Bar */}
             {selectedSeats.length > 0 && (
