@@ -4,6 +4,7 @@ import api from '../utils/api';
 import BookingSteps from '../components/BookingSteps';
 import SeatLegend from '../components/SeatLegend';
 import { toast } from 'react-hot-toast';
+import useReservationStore from '../store/reservationStore';
 
 export default function SeatSelection() {
     const { id: showtimeId } = useParams();
@@ -137,6 +138,9 @@ export default function SeatSelection() {
             // Call reserve endpoint (moves locks to PENDING tickets in DB)
             await api.post('/reservations/reserve', { showtimeId, seatSelections });
             
+            // Save to Zustand
+            useReservationStore.getState().setReservationData({ selectedSeats });
+
             // Navigate to checkout and prevent component unmount cleanup from running
             setSelectedSeats([]);
             navigate(`/showtimes/${showtimeId}/checkout`);

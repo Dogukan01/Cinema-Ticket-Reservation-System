@@ -9,6 +9,8 @@ const router = express.Router();
 // Herkese açık (Public) Endpoint'ler
 router.post('/register', validate(registerSchema), authController.register);
 router.post('/login', validate(loginSchema), authController.login);
+router.get('/refresh', authController.refresh);
+router.post('/logout', authController.logout);
 
 // Korumalı (Protected) Endpoint Örneği (Sadece test amaçlı)
 router.get('/profile', verifyToken, (req, res) => {

@@ -1,4 +1,5 @@
 const paymentService = require('../services/paymentService');
+const { sendTicketEmail } = require('../utils/mailer');
 
 class PaymentController {
     
@@ -23,6 +24,19 @@ class PaymentController {
                 cvv, 
                 expiryDate
             );
+
+            // E-posta gönderimi
+            if (req.user && req.user.email) {
+                const userName = req.user.email.split('@')[0];
+                const ticketDetails = {
+                    ticketIds: paymentResult.confirmedTickets,
+                    totalAmount: paymentResult.totalAmount
+                };
+                
+                sendTicketEmail(req.user.email, userName, ticketDetails).catch(err => {
+                    console.error('Mail gönderim hatası:', err.message);
+                });
+            }
 
             return res.status(200).json({
                 message: 'Ödeme başarıyla alındı! Biletleriniz onaylandı.',

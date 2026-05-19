@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const db = require('./config/db');
@@ -13,6 +14,7 @@ const authRoutes = require('./routes/authRoutes');
 const catalogRoutes = require('./routes/catalogRoutes');
 const reservationRoutes = require('./routes/reservationRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 const { Server } = require('socket.io');
 const http = require('http');
@@ -48,7 +50,8 @@ const apiLimiter = rateLimit({
 });
 
 // Middleware'ler
-app.use(cors());
+app.use(cors({ origin: 'http://localhost:3001', credentials: true }));
+app.use(cookieParser());
 app.use(express.json()); // JSON body parse
 app.use(express.urlencoded({ extended: true }));
 
@@ -60,6 +63,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/catalog', catalogRoutes);
 app.use('/api/reservations', reservationRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Merkezi Hata Yakalama Middleware'i
 app.use(errorHandler);

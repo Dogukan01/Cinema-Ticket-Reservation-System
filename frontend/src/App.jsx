@@ -10,6 +10,7 @@ import Checkout from './pages/Checkout';
 import Invoice from './pages/Invoice';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import AdminDashboard from './pages/AdminDashboard';
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
           <Route path="/showtimes/:id/invoice" element={<Invoice />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/admin" element={<AdminDashboard />} />
         </Routes>
       </main>
     </Router>
