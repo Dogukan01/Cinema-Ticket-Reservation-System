@@ -29,6 +29,7 @@ export default function Checkout({ params }) {
 
             // Başarılı ödeme -> Fatura Sayfasına
             localStorage.setItem('receiptId', res.data.receiptId);
+            localStorage.setItem('confirmedTickets', JSON.stringify(res.data.confirmedTickets));
             router.push(`/showtimes/${showtimeId}/invoice`);
             
         } catch (error) {

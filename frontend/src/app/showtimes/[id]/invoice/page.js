@@ -10,6 +10,7 @@ export default function Invoice({ params }) {
     
     const [invoice, setInvoice] = useState(null);
     const [receiptId, setReceiptId] = useState('');
+    const [confirmedTickets, setConfirmedTickets] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -19,18 +20,33 @@ export default function Invoice({ params }) {
                 setLoading(true);
                 setError('');
                 
-                // localStorage'dan receiptId'yi al
+                // localStorage'dan receiptId ve confirmedTickets'ı al
                 const savedReceiptId = localStorage.getItem('receiptId');
+                const savedTickets = localStorage.getItem('confirmedTickets');
+                
                 if (savedReceiptId) {
                     setReceiptId(savedReceiptId);
                 }
+                
+                const ticketsData = savedTickets ? JSON.parse(savedTickets) : [];
+                setConfirmedTickets(ticketsData);
 
-                // Backend'den fatura detaylarını getir
+                // Backend'den fatura detaylarını getir (sadece film/sinema info için)
                 const res = await api.get(`/payment/invoice/${showtimeId}`);
-                setInvoice(res.data);
+                
+                // API'den gelen biletleri, localStorage'daki confirmedTickets ile filtrele
+                const filteredInvoice = {
+                    ...res.data,
+                    tickets: res.data.tickets.filter(apiTicket => 
+                        ticketsData.some(savedTicket => savedTicket.id === apiTicket.id)
+                    )
+                };
+                
+                setInvoice(filteredInvoice);
                 
                 // localStorage'u temizle (tek seferlik kullanım)
                 localStorage.removeItem('receiptId');
+                localStorage.removeItem('confirmedTickets');
                 localStorage.removeItem('ticketSelection');
             } catch (err) {
                 setError(err.response?.data?.error || 'Fatura bilgisi yüklenirken bir hata oluştu.');
@@ -103,6 +119,8 @@ export default function Invoice({ params }) {
 
     // Koltuğu formatla (virgül ile ayır)
     const seatList = invoice.tickets.map(t => t.seatId).join(', ');
+    const totalPrice = invoice.tickets.reduce((sum, t) => sum + parseFloat(t.price), 0);
+    const ticketCount = invoice.tickets.length;
 
     return (
         <div className={styles.invoiceContainer}>
@@ -215,12 +233,12 @@ export default function Invoice({ params }) {
                 <div className={styles.totalSection}>
                     <div className={styles.totalRow}>
                         <span>Toplam Bilet Sayısı</span>
-                        <strong>{invoice.ticketCount}</strong>
+                        <strong>{ticketCount}</strong>
                     </div>
                     <div className={styles.totalRow}>
                         <span>Toplam Tutar</span>
                         <strong style={{ color: 'var(--accent-color)', fontSize: '1.5em' }}>
-                            {parseFloat(invoice.totalPrice).toFixed(2)} TL
+                            {totalPrice.toFixed(2)} TL
                         </strong>
                     </div>
                 </div>
