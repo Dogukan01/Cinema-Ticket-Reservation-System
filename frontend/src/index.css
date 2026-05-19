@@ -1,0 +1,553 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@300;400;600;800&display=swap');
+
+:root {
+  --background-dark: #090d16; /* Deep space/cinema black */
+  --accent-color: #ef4444; /* Cinematic red */
+  --accent-hover: #dc2626;
+  --accent-glow: rgba(239, 68, 68, 0.4);
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --glass-bg: rgba(15, 23, 42, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --input-bg: rgba(0, 0, 0, 0.4);
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  font-family: 'Outfit', 'Inter', sans-serif;
+  background-color: var(--background-dark);
+  color: var(--text-primary);
+  min-height: 100vh;
+  background-image: radial-gradient(circle at top right, rgba(239, 68, 68, 0.12), transparent 45%),
+                    radial-gradient(circle at bottom left, rgba(59, 130, 246, 0.08), transparent 45%);
+  background-attachment: fixed;
+  overflow-x: hidden;
+}
+
+/* ==========================================
+   GLASSMORPHISM UTILITIES
+========================================== */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
+  transition: all 0.3s ease;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 16px;
+  transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1), border-color 0.3s ease, box-shadow 0.4s ease;
+}
+
+.glass-card:hover {
+  transform: translateY(-8px);
+  border-color: rgba(239, 68, 68, 0.3);
+  box-shadow: 0 12px 30px rgba(239, 68, 68, 0.15);
+}
+
+/* ==========================================
+   TYPOGRAPHY & BUTTONS
+========================================== */
+h1, h2, h3, h4 {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin-bottom: 0.5em;
+  color: #fff;
+}
+
+p {
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.btn-primary {
+  background-color: var(--accent-color);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  font-family: inherit;
+  font-size: 1rem;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--accent-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px var(--accent-glow);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Navbar */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 8%;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid var(--glass-border);
+  background: rgba(9, 13, 22, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.nav-brand {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--accent-color);
+  text-decoration: none;
+  letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-brand span {
+  background: linear-gradient(to right, var(--accent-color), #f87171);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Form Elements */
+input, select, textarea {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  background: var(--input-bg);
+  color: white;
+  font-family: inherit;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+}
+
+/* ==========================================
+   SEAT LAYOUT STYLES
+========================================== */
+.seats-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+    text-align: center;
+}
+
+.cinema-screen {
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.05));
+    height: 70px;
+    width: 100%;
+    margin-bottom: 50px;
+    border-radius: 50% 50% 0 0 / 20px 20px 0 0;
+    box-shadow: 0 15px 30px rgba(255, 255, 255, 0.08);
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.screen-text {
+    position: absolute;
+    bottom: -30px;
+    width: 100%;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    letter-spacing: 7px;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.seat-row {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.row-label {
+    width: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: var(--text-secondary);
+}
+
+.cinema-seat {
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px 8px 4px 4px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    color: transparent;
+    user-select: none;
+}
+
+.cinema-seat:hover:not(.unavailable) {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.1);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.cinema-seat.selected {
+    background: #eab308; /* Yellow */
+    border-color: #fef08a;
+    color: #000 !important;
+    font-weight: bold;
+    box-shadow: 0 0 12px rgba(234, 179, 8, 0.6);
+}
+
+.cinema-seat.unavailable {
+    background: #334155; /* Slate Gray */
+    border-color: #1e293b;
+    cursor: not-allowed;
+    opacity: 0.45;
+    color: transparent !important;
+}
+
+.seat-legend {
+    display: flex;
+    justify-content: center;
+    gap: 25px;
+    margin-top: 40px;
+    padding-top: 25px;
+    border-top: 1px solid var(--glass-border);
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.legend-box {
+    width: 20px;
+    height: 20px;
+    border-radius: 5px;
+}
+
+.seat-action-panel {
+    margin-top: 40px;
+    padding: 20px 30px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* ==========================================
+   INVOICE / RECEIPT STYLES
+========================================== */
+.invoice-container {
+    max-width: 700px;
+    margin: 30px auto;
+    padding: 0 20px;
+}
+
+.invoice-wrapper {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 18px;
+    padding: 40px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+    box-sizing: border-box;
+}
+
+.invoice-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.cinema-logo {
+    text-align: left;
+}
+
+.cinema-logo h1 {
+    font-size: 3em;
+    margin: 0;
+}
+
+.cinema-logo p {
+    margin: 0;
+}
+
+.receipt-number {
+    text-align: right;
+}
+
+.receipt-number p {
+    margin: 0;
+}
+
+.receipt-number h2 {
+    margin: 5px 0 0 0;
+    letter-spacing: 1px;
+}
+
+.invoice-divider {
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--accent-color), transparent);
+    margin: 25px 0;
+    opacity: 0.6;
+}
+
+.invoice-section {
+    margin-bottom: 25px;
+}
+
+.invoice-section-title {
+    color: var(--accent-color);
+    font-size: 1.1em;
+    margin-bottom: 15px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+}
+
+.invoice-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.invoice-info-item {
+    background: rgba(0, 0, 0, 0.25);
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.invoice-label {
+    color: var(--text-secondary);
+    font-size: 0.85em;
+    margin: 0 0 8px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.invoice-value {
+    color: var(--text-primary);
+    margin: 0;
+    font-weight: 500;
+}
+
+.invoice-poster-container {
+    flex-shrink: 0;
+}
+
+.invoice-seats-display {
+    margin-bottom: 20px;
+}
+
+.invoice-seats-box {
+    background: rgba(239, 68, 68, 0.08);
+    border: 2px solid var(--accent-color);
+    padding: 15px;
+    border-radius: 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 1.15em;
+    color: var(--accent-color);
+    font-weight: 700;
+    text-align: center;
+    letter-spacing: 2px;
+}
+
+.invoice-tickets-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+.invoice-tickets-table thead {
+    border-bottom: 2px solid var(--accent-color);
+}
+
+.invoice-tickets-table th {
+    padding: 15px 10px;
+    text-align: left;
+    color: var(--accent-color);
+    font-weight: 800;
+    font-size: 0.95em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.invoice-tickets-table td {
+    padding: 12px 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.invoice-seat-cell {
+    font-family: 'Courier New', monospace;
+    font-weight: 700;
+    color: var(--accent-color);
+}
+
+.invoice-total-section {
+    background: rgba(0, 0, 0, 0.35);
+    padding: 20px;
+    border-radius: 8px;
+    border-left: 4px solid var(--accent-color);
+}
+
+.invoice-total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    color: var(--text-primary);
+}
+
+.invoice-total-row:first-child {
+    padding-top: 0;
+}
+
+.invoice-total-row:last-child {
+    padding-bottom: 0;
+}
+
+.invoice-footer {
+    text-align: center;
+    margin-top: 25px;
+}
+
+.invoice-button-group {
+    display: flex;
+    gap: 15px;
+    margin-top: 30px;
+    justify-content: center;
+}
+
+.invoice-button-group button {
+    flex: 1;
+    max-width: 200px;
+}
+
+.invoice-loading-spinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    justify-content: center;
+    min-height: 50vh;
+}
+
+.invoice-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    border-top: 4px solid var(--accent-color);
+    border-radius: 50%;
+    animation: invoice-spin 1s linear infinite;
+}
+
+@keyframes invoice-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Print Styles */
+@media print {
+    .invoice-container {
+        margin: 0;
+        padding: 0;
+    }
+
+    .invoice-wrapper {
+        background: white !important;
+        border: 1px solid #ccc !important;
+        box-shadow: none !important;
+        border-radius: 0;
+        page-break-inside: avoid;
+        color: black !important;
+    }
+
+    .invoice-button-group {
+        display: none;
+    }
+
+    .invoice-info-item {
+        background: #f5f5f5 !important;
+        border: 1px solid #ddd !important;
+    }
+
+    .invoice-seats-box {
+        background: #fff3f3 !important;
+        border: 2px solid #ef4444 !important;
+    }
+
+    .invoice-tickets-table th,
+    .invoice-tickets-table td {
+        border-color: #ddd !important;
+        color: black !important;
+    }
+
+    .invoice-tickets-table thead {
+        border-bottom-color: #ef4444 !important;
+        background: #f5f5f5 !important;
+    }
+
+    .invoice-total-section {
+        background: #f5f5f5 !important;
+        border-left-color: #ef4444 !important;
+    }
+
+    .invoice-divider {
+        background: #ccc !important;
+        opacity: 1 !important;
+    }
+    
+    body {
+        background: white !important;
+    }
+    
+    * {
+        color: black !important;
+    }
+}

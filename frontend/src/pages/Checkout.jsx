@@ -1,0 +1,126 @@
+import React, { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import api from '../utils/api';
+
+export default function Checkout() {
+    const { id: showtimeId } = useParams();
+    const navigate = useNavigate();
+
+    const [cardNumber, setCardNumber] = useState('4242 4242 4242 4242'); // Autofilled for test convenience
+    const [expiry, setExpiry] = useState('12/26');
+    const [cvv, setCvv] = useState('123');
+    const [name, setName] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [errorMsg, setErrorMsg] = useState('');
+
+    const handlePayment = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setErrorMsg('');
+
+        try {
+            const res = await api.post('/payment/pay', {
+                showtimeId,
+                cardNumber,
+                expiryDate: expiry,
+                cvv
+            });
+
+            // Save results to localStorage to render in invoice screen
+            localStorage.setItem('receiptId', res.data.receiptId);
+            localStorage.setItem('confirmedTickets', JSON.stringify(res.data.confirmedTickets));
+            navigate(`/showtimes/${showtimeId}/invoice`);
+            
+        } catch (error) {
+            console.error('Payment error:', error);
+            setErrorMsg(error.response?.data?.error || 'Ödeme işlemi sırasında bir hata oluştu.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div style={{ maxWidth: '500px', margin: '50px auto', padding: '0 20px' }}>
+            <button 
+                onClick={() => navigate(-1)}
+                style={{ 
+                    background: 'transparent', 
+                    border: 'none', 
+                    color: 'var(--text-secondary)', 
+                    cursor: 'pointer', 
+                    fontWeight: '600', 
+                    marginBottom: '20px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '8px'
+                }}
+            >
+                &larr; Koltuk Seçimine Dön
+            </button>
+
+            <div className="glass-panel" style={{ padding: '40px' }}>
+                <h1 style={{ textAlign: 'center', color: 'var(--accent-color)', marginBottom: '30px', fontSize: '1.8rem' }}>Güvenli Ödeme</h1>
+                
+                {errorMsg && (
+                    <div style={{ background: 'rgba(127, 29, 29, 0.4)', border: '1px solid #ef4444', color: 'white', padding: '12px', borderRadius: '10px', marginBottom: '20px', fontSize: '0.95rem' }}>
+                        {errorMsg}
+                    </div>
+                )}
+
+                <form onSubmit={handlePayment} style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: '600' }}>Kart Üzerindeki İsim</label>
+                        <input 
+                            type="text" 
+                            required
+                            value={name}
+                            onChange={e => setName(e.target.value)}
+                            placeholder="Örn: Hakan Yılmaz"
+                        />
+                    </div>
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: '600' }}>Kart Numarası (Test kartı otomatik doldurulmuştur)</label>
+                        <input 
+                            type="text" 
+                            required
+                            value={cardNumber}
+                            onChange={e => setCardNumber(e.target.value)}
+                        />
+                    </div>
+                    <div style={{ display: 'flex', gap: '20px' }}>
+                        <div style={{ flex: 1 }}>
+                            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: '600' }}>Son Kullanma</label>
+                            <input 
+                                type="text" 
+                                required
+                                value={expiry}
+                                onChange={e => setExpiry(e.target.value)}
+                                placeholder="AA/YY"
+                            />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: '600' }}>CVV</label>
+                            <input 
+                                type="text" 
+                                required
+                                value={cvv}
+                                onChange={e => setCvv(e.target.value)}
+                                placeholder="123"
+                                maxLength="4"
+                            />
+                        </div>
+                    </div>
+
+                    <button 
+                        type="submit" 
+                        className="btn-primary" 
+                        style={{ marginTop: '20px', padding: '16px', fontSize: '1.1rem' }}
+                        disabled={loading}
+                    >
+                        {loading ? 'İşleminiz Yapılıyor...' : 'Ödemeyi Tamamla'}
+                    </button>
+                </form>
+            </div>
+        </div>
+    );
+}

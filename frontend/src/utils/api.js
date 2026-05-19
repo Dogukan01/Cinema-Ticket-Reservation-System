@@ -1,7 +1,6 @@
 import axios from 'axios';
 
-// Backend'in çalıştığı URL'i ayarlıyoruz (Şimdilik Localhost)
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const api = axios.create({
     baseURL: API_BASE_URL,
@@ -10,22 +9,21 @@ const api = axios.create({
     },
 });
 
-// Request Interceptor: Eğer localStorage'da JWT varsa, her isteğin Header'ına otomatik ekle
+// Request Interceptor: Attach JWT token or Guest ID
 api.interceptors.request.use(
     (config) => {
-        // Tarayıcı ortamında mıyız kontrolü (Next.js SSR sırasında patlamamak için)
-        if (typeof window !== 'undefined') {
-            const token = localStorage.getItem('token');
-            if (token) {
-                config.headers.Authorization = `Bearer ${token}`;
-            } else {
-                let guestId = localStorage.getItem('guest_id');
-                if (!guestId) {
-                    guestId = 'guest_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-                    localStorage.setItem('guest_id', guestId);
-                }
-                config.headers['X-Guest-ID'] = guestId;
+        const token = localStorage.getItem('token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+            // Clean guest ID if logged in
+            config.headers['X-Guest-ID'] = undefined;
+        } else {
+            let guestId = localStorage.getItem('guest_id');
+            if (!guestId) {
+                guestId = 'guest_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+                localStorage.setItem('guest_id', guestId);
             }
+            config.headers['X-Guest-ID'] = guestId;
         }
         return config;
     },
