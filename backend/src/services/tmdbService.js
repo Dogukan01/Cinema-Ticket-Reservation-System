@@ -1,39 +1,32 @@
 const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 
 class TMDBService {
+    /**
+     * Kaggle'dan indirilip JSON'a çevrilmiş IMDB Top 1000 filmlerini mock data (fallback) olarak getirir.
+     */
+    getFallbackMovies() {
+        try {
+            const dataPath = path.join(__dirname, '../data/movies.json');
+            const fileContent = fs.readFileSync(dataPath, 'utf-8');
+            const movies = JSON.parse(fileContent);
+            return movies.slice(0, 30);
+        } catch (error) {
+            console.error('[TMDB ERROR] Fallback JSON okunamadı:', error.message);
+            return [];
+        }
+    }
+
     /**
      * Vizyondaki filmleri gerçek TMDB API'sinden getirir.
      */
     async getNowPlayingMovies() {
         const apiKey = process.env.TMDB_API_KEY;
         
-        const mockData = [
-            {
-                title: 'Dune: Part Two',
-                description: 'Paul Atreides, Fremenler ile birleşerek ailesini yok eden komploculara karşı savaş açar.',
-                durationMinutes: 166,
-                releaseDate: '2024-03-01',
-                posterUrl: 'https://image.tmdb.org/t/p/w500/8b8R8l88ILjqZWbHvtxORHnqg6f.jpg'
-            },
-            {
-                title: 'Oppenheimer',
-                description: 'Amerikalı bilim insanı J. Robert Oppenheimer ve atom bombasının geliştirilme süreci.',
-                durationMinutes: 180,
-                releaseDate: '2023-07-21',
-                posterUrl: 'https://image.tmdb.org/t/p/w500/8Gxv8gP5dGf6385K5H6juRxmYym.jpg'
-            },
-            {
-                title: 'Deadpool & Wolverine',
-                description: 'Deadpool, Wolverine ile birlikte çoklu evrenleri kurtarmaya çalışır.',
-                durationMinutes: 127,
-                releaseDate: '2024-07-26',
-                posterUrl: 'https://image.tmdb.org/t/p/w500/9b9X11k0aBebYt5b2w3c67Gv3o7.jpg'
-            }
-        ];
-
-        if (!apiKey) {
-            console.warn('[TMDB WARNING] TMDB_API_KEY bulunamadı. Mock veriler kullanılıyor...');
-            return mockData;
+        if (!apiKey || apiKey === 'YOUR_TMDB_API_KEY_HERE') {
+            console.warn('[TMDB WARNING] TMDB_API_KEY bulunamadı. JSON (Fallback) veriler kullanılıyor...');
+            return this.getFallbackMovies();
         }
 
         try {
@@ -51,8 +44,8 @@ class TMDBService {
 
             return mappedMovies;
         } catch (error) {
-            console.error('[TMDB ERROR]', error.message, '- Mock verilere (Fallback) dönülüyor...');
-            return mockData;
+            console.error('[TMDB ERROR]', error.message, '- JSON verilere (Fallback) dönülüyor...');
+            return this.getFallbackMovies();
         }
     }
 }
