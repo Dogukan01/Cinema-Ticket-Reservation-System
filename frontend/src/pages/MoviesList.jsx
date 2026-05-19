@@ -53,6 +53,7 @@ export default function MoviesList() {
                 textShadow: '0 2px 20px rgba(239, 68, 68, 0.3)',
                 background: 'linear-gradient(to right, #fff, #f87171)',
                 WebkitBackgroundClip: 'text',
+                backgroundClip: 'text',
                 WebkitTextFillColor: 'transparent'
             }}>
                 Vizyondaki Filmler
