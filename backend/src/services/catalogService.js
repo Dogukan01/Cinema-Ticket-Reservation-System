@@ -6,13 +6,13 @@ class CatalogService {
     // ==========================================
     async createMovie(movieData) {
         const { title, description, durationMinutes, releaseDate, posterUrl } = movieData;
-        
+
         const query = `
             INSERT INTO movies (title, description, duration_minutes, release_date, poster_url)
             VALUES ($1, $2, $3, $4, $5) RETURNING *
         `;
         const values = [title, description, durationMinutes, releaseDate, posterUrl];
-        
+
         const result = await db.query(query, values);
         return result.rows[0];
     }
@@ -90,7 +90,7 @@ class CatalogService {
             )
         `;
         const overlapResult = await db.query(overlapQuery, [hallId, start.toISOString(), end.toISOString()]);
-        
+
         if (overlapResult.rows.length > 0) {
             throw new Error('Seans çakışması! Bu salonda belirtilen saat aralığında (hazırlık süresi dâhil) başka bir film oynamaktadır.');
         }
