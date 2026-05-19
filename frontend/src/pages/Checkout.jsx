@@ -55,7 +55,7 @@ export default function Checkout() {
             navigate(`/showtimes/${showtimeId}/tickets`);
         } else if (stepId === 1) {
             const movieId = localStorage.getItem('booking_movie_id');
-            if (movieId) navigate(`/movies/${movieId}`);
+            if (movieId) navigate(`/movies/${movieId}/booking`);
             else navigate('/');
         }
     };

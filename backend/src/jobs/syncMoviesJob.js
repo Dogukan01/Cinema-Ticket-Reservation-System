@@ -1,6 +1,7 @@
 const cron = require('node-cron');
 const tmdbService = require('../services/tmdbService');
 const db = require('../config/db');
+const redis = require('../config/redis');
 
 class SyncMoviesJob {
     start() {
@@ -23,7 +24,7 @@ class SyncMoviesJob {
 
             for (const movie of movies) {
                 // 1. Film veritabanımızda zaten var mı? (İsimden kontrol ediyoruz)
-                const checkRes = await db.query('SELECT id FROM movies WHERE title = $1', [movie.title]);
+                const checkRes = await db.query('SELECT id, duration_minutes FROM movies WHERE title = $1', [movie.title]);
                 
                 if (checkRes.rows.length === 0) {
                     // 2. Yoksa ekle
@@ -39,10 +40,30 @@ class SyncMoviesJob {
                         movie.posterUrl
                     ]);
                     addedCount++;
+                } else {
+                    // 3. Varsa ve süre 120 (veya farklı) ise güncelle
+                    const existing = checkRes.rows[0];
+                    if (existing.duration_minutes !== movie.durationMinutes) {
+                        await db.query(
+                            'UPDATE movies SET duration_minutes = $1 WHERE id = $2',
+                            [movie.durationMinutes, existing.id]
+                        );
+                    }
                 }
             }
 
             console.log(`[CRON] Senkronizasyon tamamlandı! Eklenen yeni film sayısı: ${addedCount}`);
+            
+            // Redis'teki eski film listesi ve detay önbelleklerini temizle
+            await redis.connect();
+            if (redis.isAvailable()) {
+                const client = redis.getClient();
+                const keys = await client.keys('catalog:*');
+                if (keys && keys.length > 0) {
+                    await client.del(keys);
+                    console.log(`[CRON] Redis'teki ${keys.length} adet film kataloğu önbelleği temizlendi.`);
+                }
+            }
             
         } catch (error) {
             console.error('[CRON ERROR] Film senkronizasyonu sırasında hata oluştu:', error.message);
@@ -51,3 +72,4 @@ class SyncMoviesJob {
 }
 
 module.exports = new SyncMoviesJob();
+

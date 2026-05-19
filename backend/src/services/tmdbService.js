@@ -33,13 +33,25 @@ class TMDBService {
             console.log('[TMDB] Gerçek API isteği yapılıyor...');
             const response = await axios.get(`https://api.themoviedb.org/3/movie/now_playing?api_key=${apiKey}&language=tr-TR&page=1`);
             
-            // TMDB'den gelen verileri kendi veritabanı modelimize uygun formata çeviriyoruz
-            const mappedMovies = response.data.results.map(movie => ({
-                title: movie.title,
-                description: movie.overview || 'Özet bulunmuyor.',
-                durationMinutes: 120, // Now Playing uç noktası süre vermez
-                releaseDate: movie.release_date,
-                posterUrl: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : 'https://via.placeholder.com/500x750?text=No+Poster'
+            // TMDB'den gelen her filmin detayına (süre bilgisi için) asenkron istek atıyoruz
+            const mappedMovies = await Promise.all(response.data.results.slice(0, 15).map(async (movie) => {
+                let durationMinutes = 120;
+                try {
+                    const detailRes = await axios.get(`https://api.themoviedb.org/3/movie/${movie.id}?api_key=${apiKey}`);
+                    if (detailRes.data.runtime && detailRes.data.runtime > 0) {
+                        durationMinutes = detailRes.data.runtime;
+                    }
+                } catch (err) {
+                    console.warn(`[TMDB WARNING] Film detayı alınamadı (${movie.title}):`, err.message);
+                }
+
+                return {
+                    title: movie.title,
+                    description: movie.overview || 'Özet bulunmuyor.',
+                    durationMinutes: durationMinutes,
+                    releaseDate: movie.release_date,
+                    posterUrl: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : 'https://via.placeholder.com/500x750?text=No+Poster'
+                };
             }));
 
             return mappedMovies;

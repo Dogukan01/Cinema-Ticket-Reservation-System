@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import Header from './components/Header';
 import MoviesList from './pages/MoviesList';
 import MovieDetails from './pages/MovieDetails';
+import MovieBooking from './pages/MovieBooking';
 import TicketSelection from './pages/TicketSelection';
 import SeatSelection from './pages/SeatSelection';
 import Checkout from './pages/Checkout';
@@ -22,7 +23,9 @@ function App() {
         <Routes>
           <Route path="/" element={<MoviesList />} />
           <Route path="/movies/:id" element={<MovieDetails />} />
+          <Route path="/movies/:id/booking" element={<MovieBooking />} />
           <Route path="/showtimes/:id/tickets" element={<TicketSelection />} />
+
           <Route path="/showtimes/:id/seats" element={<SeatSelection />} />
           <Route path="/showtimes/:id/checkout" element={<Checkout />} />
           <Route path="/showtimes/:id/invoice" element={<Invoice />} />

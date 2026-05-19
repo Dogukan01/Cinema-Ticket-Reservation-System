@@ -67,13 +67,17 @@ export default function TicketSelection() {
 
     // Adım göstergesine tıklayınca geri git (sadece geri)
     const handleStepClick = (stepId) => {
-        if (stepId === 1) navigate(-1); // MovieDetails
+        if (stepId === 1) {
+            const movieId = localStorage.getItem('booking_movie_id');
+            if (movieId) navigate(`/movies/${movieId}/booking`);
+            else navigate('/');
+        }
     };
 
     return (
         <div style={{ maxWidth: '650px', margin: '40px auto', padding: '0 20px' }}>
             <button 
-                onClick={() => navigate(-1)}
+                onClick={() => handleStepClick(1)}
                 style={{ 
                     background: 'transparent', 
                     border: 'none', 
@@ -88,6 +92,7 @@ export default function TicketSelection() {
             >
                 &larr; Geri Dön
             </button>
+
 
             <BookingSteps currentStep={2} onStepClick={handleStepClick} />
 

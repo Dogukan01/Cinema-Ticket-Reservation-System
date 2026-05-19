@@ -81,8 +81,8 @@ export default function MoviesList() {
             ) : (
                 <div style={{ 
                     display: 'grid', 
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
-                    gap: '35px',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', 
+                    gap: '24px',
                     paddingBottom: '40px'
                 }}>
                     {movies.map((movie) => (
@@ -91,7 +91,7 @@ export default function MoviesList() {
                             className="glass-card" 
                             onClick={() => handleCardClick(movie)}
                             style={{ 
-                                padding: '20px', 
+                                padding: '16px', 
                                 display: 'flex', 
                                 flexDirection: 'column',
                                 cursor: 'pointer',
@@ -111,22 +111,23 @@ export default function MoviesList() {
                             <div 
                                 style={{ 
                                     width: '100%', 
-                                    height: '380px', 
+                                    height: '320px', 
                                     backgroundImage: `url(${movie.poster_url || '/placeholder-poster.jpg'})`,
                                     backgroundSize: 'cover',
                                     backgroundPosition: 'center',
                                     borderRadius: '12px', 
-                                    marginBottom: '20px',
+                                    marginBottom: '15px',
                                     boxShadow: '0 8px 25px rgba(0,0,0,0.6)',
                                     border: '1px solid rgba(255, 255, 255, 0.05)'
                                 }}
                             />
-                            <h2 style={{ fontSize: '1.35rem', color: '#fff', marginBottom: '10px', height: '3.2rem', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', fontWeight: '800' }}>
+                            <h2 style={{ fontSize: '1.15rem', color: '#fff', marginBottom: '8px', height: '2.8rem', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', fontWeight: '800' }}>
                                 {movie.title}
                             </h2>
                             
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-                                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+
                                     ⏳ {movie.duration_minutes} Dk
                                 </span>
                                 <span style={{ fontSize: '0.85rem', color: 'var(--accent-color)', fontWeight: '600' }}>
@@ -149,7 +150,7 @@ export default function MoviesList() {
                             </p>
                             
                             <button className="btn-primary" style={{ width: '100%', marginTop: 'auto' }}>
-                                Detayları Gör & Bilet Al
+                                Detayları Gör
                             </button>
                         </div>
                     ))}
