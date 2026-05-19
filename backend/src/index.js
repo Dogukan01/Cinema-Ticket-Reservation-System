@@ -29,6 +29,11 @@ app.get('/health', (req, res) => {
     res.json({ status: 'UP', message: 'SBRS Backend API çalışıyor.' });
 });
 
+// Ana Sayfa (Root Route)
+app.get('/', (req, res) => {
+    res.send('<h1>SBRS Backend API Çalışıyor!</h1><p>API endpointleri için /api/ yolunu kullanın.</p>');
+});
+
 // Veritabanı bağlantı testi ve Sunucuyu başlatma
 async function startServer() {
     try {

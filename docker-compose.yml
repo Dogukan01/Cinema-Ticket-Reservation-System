@@ -7,8 +7,8 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: your_secure_password_here
-      POSTGRES_DB: sbrs_db
+      POSTGRES_PASSWORD: PostgreDocker123
+      POSTGRES_DB: sinema_db
     ports:
       - "5432:5432"
     volumes:
