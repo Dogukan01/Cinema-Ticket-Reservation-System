@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import BookingSteps from '../components/BookingSteps';
 
 export default function TicketSelection() {
     const { id: showtimeId } = useParams();
@@ -84,6 +85,8 @@ export default function TicketSelection() {
             >
                 &larr; Geri Dön
             </button>
+
+            <BookingSteps currentStep={2} />
 
             {movieTitle && (
                 <div className="glass-panel" style={{ padding: '20px', marginBottom: '25px', display: 'flex', flexDirection: 'column', gap: '8px', borderLeft: '4px solid var(--accent-color)' }}>

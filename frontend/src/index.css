@@ -552,3 +552,31 @@ input:focus, select:focus, textarea:focus {
         color: black !important;
     }
 }
+
+/* Thin Scrollbars for Columns */
+.scroll-column {
+    overflow-y: auto !important;
+    max-height: 600px !important;
+    height: 600px !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent !important;
+}
+
+.scroll-column::-webkit-scrollbar {
+    width: 6px !important;
+    height: 6px !important;
+}
+
+.scroll-column::-webkit-scrollbar-track {
+    background: transparent !important;
+}
+
+.scroll-column::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-radius: 4px !important;
+}
+
+.scroll-column::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25) !important;
+}
+

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
+import BookingSteps from '../components/BookingSteps';
 
 export default function SeatSelection() {
     const { id: showtimeId } = useParams();
@@ -194,6 +195,8 @@ export default function SeatSelection() {
             >
                 &larr; Bilet Seçimine Dön
             </button>
+
+            <BookingSteps currentStep={3} />
 
             <h1 style={{ color: 'var(--accent-color)', marginBottom: '30px' }}>Koltuk Seçimi</h1>
 

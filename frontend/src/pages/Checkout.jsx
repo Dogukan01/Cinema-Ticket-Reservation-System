@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
+import BookingSteps from '../components/BookingSteps';
 
 export default function Checkout() {
     const { id: showtimeId } = useParams();
@@ -57,6 +58,8 @@ export default function Checkout() {
             >
                 &larr; Koltuk Seçimine Dön
             </button>
+
+            <BookingSteps currentStep={4} />
 
             <div className="glass-panel" style={{ padding: '40px' }}>
                 <h1 style={{ textAlign: 'center', color: 'var(--accent-color)', marginBottom: '30px', fontSize: '1.8rem' }}>Güvenli Ödeme</h1>
