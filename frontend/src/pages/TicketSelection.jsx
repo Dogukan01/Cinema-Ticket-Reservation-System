@@ -34,7 +34,7 @@ export default function TicketSelection() {
             if (cached) {
                 try {
                     const parsed = JSON.parse(cached);
-                    setPrice(parsed.price || 150);
+                    setPrice(parseFloat(parsed.price) || 150);
                     setMovieTitle(parsed.movieTitle || '');
                     setCinemaName(parsed.cinemaName || '');
                     setStartTime(parsed.startTime || '');

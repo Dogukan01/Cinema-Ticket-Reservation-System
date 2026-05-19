@@ -17,6 +17,7 @@ export default function MovieDetails() {
     
     const [selectedCinema, setSelectedCinema] = useState('');
     const [selectedDate, setSelectedDate] = useState('');
+    const [selectedShowtime, setSelectedShowtime] = useState(null);
     
     const [isModalOpen, setModalOpen] = useState(false);
     const [selectedShowtimeId, setSelectedShowtimeId] = useState(null);
@@ -116,6 +117,11 @@ export default function MovieDetails() {
         }
     }, [selectedCinema, uniqueDates]);
 
+    // Reset selected showtime when movie, cinema, or date changes
+    useEffect(() => {
+        setSelectedShowtime(null);
+    }, [activeMovieId, selectedCinema, selectedDate]);
+
     // Filter showtimes for the selected cinema and selected date
     const activeShowtimes = cinemaShowtimes.filter(st => {
         const dateObj = new Date(st.start_time);
@@ -147,26 +153,34 @@ export default function MovieDetails() {
     };
 
     const handleShowtimeClick = (st) => {
-        if (!activeMovie) return;
+        if (selectedShowtime?.showtime_id === st.showtime_id) {
+            setSelectedShowtime(null); // toggle off
+        } else {
+            setSelectedShowtime(st);
+        }
+    };
+
+    const handleContinueClick = () => {
+        if (!selectedShowtime || !activeMovie) return;
         
         // Cache showtime information in sessionStorage in case of redirects or page reloads
-        sessionStorage.setItem(`showtime_info_${st.showtime_id}`, JSON.stringify({
-            price: st.price || 150,
+        sessionStorage.setItem(`showtime_info_${selectedShowtime.showtime_id}`, JSON.stringify({
+            price: selectedShowtime.price || 150,
             movieTitle: activeMovie.title,
             cinemaName: selectedCinema,
-            startTime: st.start_time
+            startTime: selectedShowtime.start_time
         }));
 
         if (!isLoggedIn) {
-            setSelectedShowtimeId(st.showtime_id);
+            setSelectedShowtimeId(selectedShowtime.showtime_id);
             setModalOpen(true);
         } else {
-            navigate(`/showtimes/${st.showtime_id}/tickets`, {
+            navigate(`/showtimes/${selectedShowtime.showtime_id}/tickets`, {
                 state: {
-                    price: st.price || 150,
+                    price: selectedShowtime.price || 150,
                     movieTitle: activeMovie.title,
                     cinemaName: selectedCinema,
-                    startTime: st.start_time
+                    startTime: selectedShowtime.start_time
                 }
             });
         }
@@ -204,6 +218,50 @@ export default function MovieDetails() {
 
             {/* Steps Indicator */}
             <BookingSteps currentStep={1} />
+
+            {/* Header info bar with 'Devam Et' button */}
+            <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '20px',
+                flexWrap: 'wrap',
+                gap: '15px'
+            }}>
+                <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.95rem' }}>
+                    Aşağıda listelenen film, sinema ve seans seçeneklerinden tercihini yaparak diğer adımlara geçebilirsiniz.
+                </p>
+                <button
+                    onClick={handleContinueClick}
+                    disabled={!selectedShowtime}
+                    style={{
+                        background: selectedShowtime ? 'var(--accent-color)' : 'rgba(255, 255, 255, 0.05)',
+                        border: selectedShowtime ? '1px solid var(--accent-color)' : '1px solid rgba(255, 255, 255, 0.1)',
+                        color: selectedShowtime ? '#000' : 'rgba(255, 255, 255, 0.3)',
+                        padding: '12px 35px',
+                        borderRadius: '24px',
+                        fontSize: '1rem',
+                        fontWeight: 'bold',
+                        cursor: selectedShowtime ? 'pointer' : 'not-allowed',
+                        transition: 'all 0.3s ease',
+                        boxShadow: selectedShowtime ? '0 0 15px rgba(239, 68, 68, 0.3)' : 'none'
+                    }}
+                    onMouseOver={e => {
+                        if (selectedShowtime) {
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.boxShadow = '0 4px 20px rgba(239, 68, 68, 0.5)';
+                        }
+                    }}
+                    onMouseOut={e => {
+                        if (selectedShowtime) {
+                            e.currentTarget.style.transform = 'none';
+                            e.currentTarget.style.boxShadow = '0 0 15px rgba(239, 68, 68, 0.3)';
+                        }
+                    }}
+                >
+                    Devam Et &rarr;
+                </button>
+            </div>
 
             {errorMsg && (
                 <div style={{ background: 'rgba(127, 29, 29, 0.4)', border: '1px solid #ef4444', color: 'white', padding: '15px', borderRadius: '10px', textAlign: 'center', marginBottom: '20px' }}>
@@ -412,31 +470,37 @@ export default function MovieDetails() {
                                                 </h4>
                                                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                                     {showtimesByHall[hall].map(st => {
+                                                        const isSelected = selectedShowtime?.showtime_id === st.showtime_id;
                                                         const timeString = new Date(st.start_time).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
                                                         return (
                                                             <button
                                                                 key={st.showtime_id}
                                                                 onClick={() => handleShowtimeClick(st)}
                                                                 style={{
-                                                                    background: 'rgba(255,255,255,0.03)',
-                                                                    border: '1px solid var(--glass-border)',
+                                                                    background: isSelected ? 'var(--accent-color)' : 'rgba(255,255,255,0.03)',
+                                                                    border: isSelected ? '2px solid var(--accent-color)' : '1px solid var(--glass-border)',
                                                                     borderRadius: '6px',
                                                                     padding: '8px 14px',
-                                                                    color: '#fff',
+                                                                    color: isSelected ? '#000' : '#fff',
                                                                     cursor: 'pointer',
                                                                     fontWeight: 'bold',
                                                                     fontSize: '0.9rem',
-                                                                    transition: 'all 0.25s ease'
+                                                                    transition: 'all 0.25s ease',
+                                                                    boxShadow: isSelected ? '0 0 10px rgba(239, 68, 68, 0.3)' : 'none'
                                                                 }}
                                                                 onMouseOver={e => {
-                                                                    e.currentTarget.style.borderColor = 'var(--accent-color)';
-                                                                    e.currentTarget.style.background = 'var(--accent-color)';
-                                                                    e.currentTarget.style.color = '#000';
+                                                                    if (!isSelected) {
+                                                                        e.currentTarget.style.borderColor = 'var(--accent-color)';
+                                                                        e.currentTarget.style.background = 'var(--accent-color)';
+                                                                        e.currentTarget.style.color = '#000';
+                                                                    }
                                                                 }}
                                                                 onMouseOut={e => {
-                                                                    e.currentTarget.style.borderColor = 'var(--glass-border)';
-                                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-                                                                    e.currentTarget.style.color = '#fff';
+                                                                    if (!isSelected) {
+                                                                        e.currentTarget.style.borderColor = 'var(--glass-border)';
+                                                                        e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                                                                        e.currentTarget.style.color = '#fff';
+                                                                    }
                                                                 }}
                                                             >
                                                                 {timeString}
