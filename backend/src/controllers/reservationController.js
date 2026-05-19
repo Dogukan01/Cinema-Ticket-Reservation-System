@@ -23,7 +23,7 @@ class ReservationController {
     async lockSeat(req, res) {
         try {
             const { showtimeId, seatId } = req.body;
-            const userId = req.user.identifier; // Token veya Guest ID'den gelir
+            const userId = req.user.identifier;
 
             if (!showtimeId || !seatId) return res.status(400).json({ error: 'showtimeId ve seatId zorunludur.' });
 
@@ -64,14 +64,15 @@ class ReservationController {
     async reserve(req, res) {
         try {
             const { showtimeId, seatSelections } = req.body;
-            const userId = req.user.id || null;
-            const guestId = req.user.guestId || null;
+            const identifier = req.user.identifier;
+            const userId   = req.user.isGuest ? null : req.user.id;
+            const guestId  = req.user.isGuest ? req.user.guestId : null;
 
             if (!showtimeId || !seatSelections) {
                 return res.status(400).json({ error: 'showtimeId ve seatSelections (array) zorunludur.' });
             }
 
-            const tickets = await reservationService.reserveTickets(userId, guestId, showtimeId, seatSelections);
+            const tickets = await reservationService.reserveTickets(identifier, userId, guestId, showtimeId, seatSelections);
             
             return res.status(201).json({
                 message: 'Biletler başarıyla PENDING statüsünde ayrıldı. Lütfen ödemeyi tamamlayın.',
@@ -79,7 +80,6 @@ class ReservationController {
             });
         } catch (error) {
             console.error('Rezervasyon Hatası:', error.message);
-            // Karaborsa veya Kilit süresi dolması hatası
             return res.status(400).json({ error: error.message });
         }
     }

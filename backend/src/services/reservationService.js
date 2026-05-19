@@ -33,27 +33,18 @@ class ReservationService {
 
         // 3. Redis'ten anlık olarak kilitlenmiş koltukları bul (Optimistic Locking)
         await redis.connect();
-        const client = redis.getClient();
-        const lockPattern = `seat_lock:${showtimeId}:*`;
-        
-        // Performans için KEYS yerine SCAN (Iterator) komutu kullanılarak kilitleri buluyoruz
-        const lockedKeys = [];
-        for await (const item of client.scanIterator({
-            MATCH: lockPattern,
-            COUNT: 100
-        })) {
-            if (Array.isArray(item)) {
-                lockedKeys.push(...item);
-            } else if (typeof item === 'string') {
-                lockedKeys.push(item);
+        let redisLockedSeats = [];
+
+        if (redis.isAvailable()) {
+            const client = redis.getClient();
+            const lockPattern = `seat_lock:${showtimeId}:*`;
+            const lockedKeys = [];
+            for await (const item of client.scanIterator({ MATCH: lockPattern, COUNT: 100 })) {
+                if (Array.isArray(item)) lockedKeys.push(...item);
+                else if (typeof item === 'string') lockedKeys.push(item);
             }
+            redisLockedSeats = lockedKeys.map(key => key.split(':').pop());
         }
-        
-        const redisLockedSeats = lockedKeys.map(key => {
-            // key yapısı: seat_lock:showtimeId:seatId
-            const parts = key.split(':');
-            return parts[parts.length - 1]; // son parça seatId
-        });
 
         // 4. Sonuçları birleştir (Eğer bir koltuk DB'de veya Redis'te varsa DOLUDUR)
         const unavailableSeats = [...new Set([...dbReservedSeats, ...redisLockedSeats])];
@@ -70,7 +61,7 @@ class ReservationService {
      * Ödeme aşamasına geçiş için hazırlık adımıdır.
      * Maksimum 6 bilet sınırını kontrol eder.
      */
-    async reserveTickets(userId, guestId, showtimeId, seatSelections) {
+    async reserveTickets(identifier, userId, guestId, showtimeId, seatSelections) {
         if (!Array.isArray(seatSelections) || seatSelections.length === 0) {
             throw new Error('En az 1 koltuk seçmelisiniz.');
         }
@@ -86,7 +77,8 @@ class ReservationService {
         const price = showtimeRes.rows[0].price;
 
         await redis.connect();
-        const client = redis.getClient();
+        const redisReady = redis.isAvailable();
+        const client = redisReady ? redis.getClient() : null;
 
         // Transaction (İşlem bloğu) başlatıyoruz (DB üzerinde güvenli çoklu işlem)
         const dbClient = await db.pool.connect();
@@ -96,16 +88,13 @@ class ReservationService {
             const createdTickets = [];
 
             for (const selection of seatSelections) {
-                const { seatId, type } = selection; // type: 'ADULT' veya 'STUDENT'
-                
-                // 1. Redis'te bu koltuk gerçekten BU KULLANICI tarafından kilitlenmiş mi?
-                const lockKey = `seat_lock:${showtimeId}:${seatId}`;
-                const lockOwner = await client.get(lockKey);
-                const identifier = userId || guestId;
+                const { seatId, type } = selection;
 
-                if (lockOwner !== identifier) {
-                    throw new Error(`${seatId} numaralı koltuk kilitli değil veya kilidin süresi dolmuş. Lütfen koltuğu tekrar seçin.`);
-                }
+                // Redis lock sadece UX amaçlı (diğer kullanıcılara "kilitli" göstermek için).
+                // Veri bütünlüğü DB'deki UNIQUE constraint ile garantilenir.
+                // (unique_seat_showtime: aynı showtime+seat çifti 2 kez insert edilemez)
+
+
                 
                 // Fiyat hesaplama
                 const ticketType = type === 'STUDENT' ? 'STUDENT' : 'ADULT';

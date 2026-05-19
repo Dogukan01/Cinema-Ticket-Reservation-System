@@ -145,7 +145,17 @@ export default function SeatSelection() {
             setSelectedSeats([]);
             navigate(`/showtimes/${showtimeId}/checkout`);
         } catch (err) {
-            toast.error(err.response?.data?.error || 'Rezervasyon işlemi başarısız oldu.');
+            // Rezervasyon başarısız → kilitleri aç ve sıfırla, kullanıcı tekrar seçebilsin
+            const seatsToUnlock = [...selectedSeats];
+            setSelectedSeats([]);
+            for (const seatId of seatsToUnlock) {
+                try {
+                    await api.post('/reservations/unlock', { showtimeId, seatId });
+                } catch (unlockErr) {
+                    console.warn('Kilit açılamadı:', seatId, unlockErr);
+                }
+            }
+            toast.error(err.response?.data?.error || 'Rezervasyon işlemi başarısız oldu. Lütfen koltukları tekrar seçin.');
         }
     };
 

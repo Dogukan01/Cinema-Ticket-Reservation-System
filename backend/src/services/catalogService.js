@@ -20,27 +20,31 @@ class CatalogService {
 
     async getMovies() {
         await redis.connect();
-        const client = redis.getClient();
         const cacheKey = 'catalog:movies';
-        
-        const cachedMovies = await client.get(cacheKey);
-        if (cachedMovies) {
-            return JSON.parse(cachedMovies);
+
+        if (redis.isAvailable()) {
+            const client = redis.getClient();
+            const cachedMovies = await client.get(cacheKey);
+            if (cachedMovies) return JSON.parse(cachedMovies);
+
+            const result = await db.query('SELECT * FROM movies ORDER BY created_at DESC');
+            await client.setEx(cacheKey, 600, JSON.stringify(result.rows));
+            return result.rows;
         }
 
+        // Redis yoksa direkt DB'den oku
         const result = await db.query('SELECT * FROM movies ORDER BY created_at DESC');
-        await client.setEx(cacheKey, 600, JSON.stringify(result.rows)); // 10 dakika TTL
         return result.rows;
     }
 
     async getMovieWithShowtimes(movieId) {
         await redis.connect();
-        const client = redis.getClient();
         const cacheKey = `catalog:movie:${movieId}`;
-        
-        const cachedData = await client.get(cacheKey);
-        if (cachedData) {
-            return JSON.parse(cachedData);
+
+        if (redis.isAvailable()) {
+            const client = redis.getClient();
+            const cachedData = await client.get(cacheKey);
+            if (cachedData) return JSON.parse(cachedData);
         }
 
         // 1. Film Detayları
@@ -65,8 +69,12 @@ class CatalogService {
             ...movie,
             showtimes: showtimesResult.rows
         };
-        
-        await client.setEx(cacheKey, 600, JSON.stringify(finalData)); // 10 dakika TTL
+
+        if (redis.isAvailable()) {
+            const client = redis.getClient();
+            await client.setEx(cacheKey, 600, JSON.stringify(finalData));
+        }
+
         return finalData;
     }
 

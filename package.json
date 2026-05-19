@@ -3,9 +3,13 @@
   "version": "1.0.0",
   "description": "Cinema Ticket Reservation System (SBRS)",
   "scripts": {
-    "install:all": "npm install --prefix backend && npm install --prefix frontend",
+    "install:all": "npm install && npm install --prefix backend && npm install --prefix frontend",
+    "dev": "concurrently --kill-others-on-fail -n \"BACKEND,FRONTEND\" -c \"bgBlue.bold,bgMagenta.bold\" \"npm start --prefix backend\" \"npm run dev --prefix frontend\"",
     "start:backend": "npm start --prefix backend",
     "start:frontend": "npm run dev --prefix frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
   },
   "author": "",
   "license": "MIT"

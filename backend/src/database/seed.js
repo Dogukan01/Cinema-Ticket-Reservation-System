@@ -116,45 +116,53 @@ async function runSeed() {
         }
         console.log(`${addedMovies.length} adet film eklendi.`);
 
-        // 5. Seansları Ekle (Showtimes) - TÜM FİLMLER
-        console.log('Seanslar oluşturuluyor...');
-        let showtimeCount = 0;
-        
-        // Tüm filmlere seans atayalım
-        const targetMovies = addedMovies; // Tüm filmler
-        
-        for (const movieId of targetMovies) {
+        // 5. Seansları Ekle (Showtimes) - Toplu INSERT ile hızlı ekleme
+        console.log('Seanslar oluşturuluyor (toplu INSERT)...');
+
+        const movieIds = [];
+        const hallIds = [];
+        const startTimes = [];
+        const endTimes = [];
+        const prices = [];
+
+        for (const movieId of addedMovies) {
             for (const hall of halls) {
-                // Bugünden itibaren 5 gün boyunca seanslar (Saat 10:00, 14:00, 18:00 ve 21:00)
+                const hallName = hall.name.toLowerCase();
+                let price = 120.00;
+                if (hallName.includes('vip')) price = 250.00;
+                if (hallName.includes('imax')) price = 180.00;
+                if (hallName.includes('premium')) price = 200.00;
+                if (hallName.includes('büyük') || hallName.includes('large')) price = 140.00;
+                if (hallName.includes('compact') || hallName.includes('küçük')) price = 100.00;
+
                 for (let day = 0; day < 5; day++) {
-                    const times = [10, 14, 18, 21];
-                    for (const hour of times) {
+                    for (const hour of [10, 14, 18, 21]) {
                         const startTime = new Date();
                         startTime.setDate(startTime.getDate() + day);
                         startTime.setHours(hour, 0, 0, 0);
-                        
-                        const endTime = new Date(startTime);
-                        endTime.setHours(endTime.getHours() + 2, 30, 0, 0); // Filmler için ortalama 2.5 saat
-                        
-                        // Fiyatlandırma (salon türüne göre)
-                        let price = 120.00;
-                        const hallName = hall.name.toLowerCase();
-                        if (hallName.includes('vip')) price = 250.00;
-                        if (hallName.includes('imax')) price = 180.00;
-                        if (hallName.includes('premium')) price = 200.00;
-                        if (hallName.includes('büyük') || hallName.includes('large')) price = 140.00;
-                        if (hallName.includes('compact') || hallName.includes('küçük')) price = 100.00;
 
-                        await db.query(`
-                            INSERT INTO showtimes (movie_id, hall_id, start_time, end_time, price)
-                            VALUES ($1, $2, $3, $4, $5)
-                        `, [movieId, hall.id, startTime, endTime, price]);
-                        
-                        showtimeCount++;
+                        const endTime = new Date(startTime);
+                        endTime.setHours(endTime.getHours() + 2, 30, 0, 0);
+
+                        movieIds.push(movieId);
+                        hallIds.push(hall.id);
+                        startTimes.push(startTime);
+                        endTimes.push(endTime);
+                        prices.push(price);
                     }
                 }
             }
         }
+
+        // Tek sorguda tüm seansları ekle (unnest ile)
+        await db.query(`
+            INSERT INTO showtimes (movie_id, hall_id, start_time, end_time, price)
+            SELECT * FROM unnest(
+                $1::uuid[], $2::uuid[], $3::timestamptz[], $4::timestamptz[], $5::numeric[]
+            )
+        `, [movieIds, hallIds, startTimes, endTimes, prices]);
+
+        const showtimeCount = movieIds.length;
         
         console.log(`${showtimeCount} adet seans başarıyla oluşturuldu!`);
         console.log(`📊 Veritabanı Özeti:`);
