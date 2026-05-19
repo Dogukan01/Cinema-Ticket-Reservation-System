@@ -40,10 +40,30 @@ export default function Checkout() {
         }
     };
 
+    // Adım göstergesine tıklayınca geri git
+    const handleStepClick = async (stepId) => {
+        // Herhangi bir geri adıma gitmeden önce PENDING biletleri iptal et
+        try {
+            await api.post('/reservations/cancel-pending', { showtimeId });
+        } catch (e) {
+            console.warn('PENDING biletler iptal edilemedi:', e.message);
+        }
+
+        if (stepId === 3) {
+            navigate(`/showtimes/${showtimeId}/seats`);
+        } else if (stepId === 2) {
+            navigate(`/showtimes/${showtimeId}/tickets`);
+        } else if (stepId === 1) {
+            const movieId = localStorage.getItem('booking_movie_id');
+            if (movieId) navigate(`/movies/${movieId}`);
+            else navigate('/');
+        }
+    };
+
     return (
-        <div style={{ maxWidth: '500px', margin: '50px auto', padding: '0 20px' }}>
+        <div style={{ maxWidth: '800px', margin: '40px auto', padding: '0 20px' }}>
             <button 
-                onClick={() => navigate(-1)}
+                onClick={() => handleStepClick(3)}
                 style={{ 
                     background: 'transparent', 
                     border: 'none', 
@@ -53,18 +73,20 @@ export default function Checkout() {
                     marginBottom: '20px', 
                     display: 'flex', 
                     alignItems: 'center', 
-                    gap: '8px'
+                    gap: '8px',
+                    marginRight: 'auto'
                 }}
             >
                 &larr; Koltuk Seçimine Dön
             </button>
 
-            <BookingSteps currentStep={4} />
+            <BookingSteps currentStep={4} onStepClick={handleStepClick} />
 
-            <div className="glass-panel" style={{ padding: '40px' }}>
+            <div className="glass-panel" style={{ padding: '40px', maxWidth: '500px', margin: '0 auto' }}>
                 <h1 style={{ textAlign: 'center', color: 'var(--accent-color)', marginBottom: '30px', fontSize: '1.8rem' }}>Güvenli Ödeme</h1>
                 
                 {errorMsg && (
+
                     <div style={{ background: 'rgba(127, 29, 29, 0.4)', border: '1px solid #ef4444', color: 'white', padding: '12px', borderRadius: '10px', marginBottom: '20px', fontSize: '0.95rem' }}>
                         {errorMsg}
                     </div>

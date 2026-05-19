@@ -120,7 +120,6 @@ export default function SeatSelection() {
         }
         
         try {
-            // Distribute seats to ticket types (Adult first, then Student)
             const seatSelections = [];
             let adultRemaining = expectedTickets.adultTickets;
             let studentRemaining = expectedTickets.studentTickets;
@@ -135,29 +134,37 @@ export default function SeatSelection() {
                 }
             });
 
-            // Call reserve endpoint (moves locks to PENDING tickets in DB)
             await api.post('/reservations/reserve', { showtimeId, seatSelections });
-            
-            // Save to Zustand
             useReservationStore.getState().setReservationData({ selectedSeats });
-
-            // Navigate to checkout and prevent component unmount cleanup from running
             setSelectedSeats([]);
             navigate(`/showtimes/${showtimeId}/checkout`);
         } catch (err) {
-            // Rezervasyon başarısız → kilitleri aç ve sıfırla, kullanıcı tekrar seçebilsin
             const seatsToUnlock = [...selectedSeats];
             setSelectedSeats([]);
             for (const seatId of seatsToUnlock) {
-                try {
-                    await api.post('/reservations/unlock', { showtimeId, seatId });
-                } catch (unlockErr) {
-                    console.warn('Kilit açılamadı:', seatId, unlockErr);
-                }
+                try { await api.post('/reservations/unlock', { showtimeId, seatId }); } catch (e) {}
             }
             toast.error(err.response?.data?.error || 'Rezervasyon işlemi başarısız oldu. Lütfen koltukları tekrar seçin.');
         }
     };
+
+    // Adım göstergesine tıklayınca geri git
+    const handleStepClick = async (stepId) => {
+        // Önce seçili koltukların kilidini aç
+        for (const seatId of selectedSeats) {
+            try { await api.post('/reservations/unlock', { showtimeId, seatId }); } catch (e) {}
+        }
+        setSelectedSeats([]);
+
+        if (stepId === 2) {
+            navigate(`/showtimes/${showtimeId}/tickets`);
+        } else if (stepId === 1) {
+            const movieId = localStorage.getItem('booking_movie_id');
+            if (movieId) navigate(`/movies/${movieId}`);
+            else navigate('/');
+        }
+    };
+
 
     if (loading) {
         return (
@@ -195,7 +202,7 @@ export default function SeatSelection() {
     return (
         <div className="seats-container">
             <button 
-                onClick={() => navigate(-1)}
+                onClick={() => handleStepClick(2)}
                 style={{ 
                     background: 'transparent', 
                     border: 'none', 
@@ -212,7 +219,8 @@ export default function SeatSelection() {
                 &larr; Bilet Seçimine Dön
             </button>
 
-            <BookingSteps currentStep={3} />
+            <BookingSteps currentStep={3} onStepClick={handleStepClick} />
+
 
             <h1 style={{ color: 'var(--accent-color)', marginBottom: '30px' }}>Koltuk Seçimi</h1>
 

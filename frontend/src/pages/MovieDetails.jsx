@@ -163,7 +163,9 @@ export default function MovieDetails() {
     const handleContinueClick = () => {
         if (!selectedShowtime || !activeMovie) return;
         
-        // Cache showtime information in sessionStorage in case of redirects or page reloads
+        // Film ID'sini sakla (geri navigasyon için)
+        localStorage.setItem('booking_movie_id', activeMovieId);
+
         sessionStorage.setItem(`showtime_info_${selectedShowtime.showtime_id}`, JSON.stringify({
             price: selectedShowtime.price || 150,
             movieTitle: activeMovie.title,

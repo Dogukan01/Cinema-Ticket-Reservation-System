@@ -11,5 +11,6 @@ router.get('/showtimes/:showtimeId/seats', reservationController.getSeats);
 router.post('/lock', extractUserOrGuest, reservationController.lockSeat);
 router.post('/unlock', extractUserOrGuest, reservationController.unlockSeat);
 router.post('/reserve', extractUserOrGuest, reservationController.reserve);
+router.post('/cancel-pending', extractUserOrGuest, reservationController.cancelPending);
 
 module.exports = router;

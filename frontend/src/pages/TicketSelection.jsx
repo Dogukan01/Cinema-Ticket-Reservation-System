@@ -61,10 +61,13 @@ export default function TicketSelection() {
             alert('En fazla 6 bilet seçebilirsiniz.');
             return;
         }
-
-        // Save selection to localStorage
         localStorage.setItem('ticketSelection', JSON.stringify({ adultTickets, studentTickets }));
         navigate(`/showtimes/${showtimeId}/seats`);
+    };
+
+    // Adım göstergesine tıklayınca geri git (sadece geri)
+    const handleStepClick = (stepId) => {
+        if (stepId === 1) navigate(-1); // MovieDetails
     };
 
     return (
@@ -86,7 +89,8 @@ export default function TicketSelection() {
                 &larr; Geri Dön
             </button>
 
-            <BookingSteps currentStep={2} />
+            <BookingSteps currentStep={2} onStepClick={handleStepClick} />
+
 
             {movieTitle && (
                 <div className="glass-panel" style={{ padding: '20px', marginBottom: '25px', display: 'flex', flexDirection: 'column', gap: '8px', borderLeft: '4px solid var(--accent-color)' }}>

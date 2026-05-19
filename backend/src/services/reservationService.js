@@ -122,6 +122,37 @@ class ReservationService {
             dbClient.release();
         }
     }
+
+    /**
+     * Kullanıcının belirli bir seans için PENDING biletlerini iptal eder.
+     * Checkout'tan geri dönüldüğünde koltuğun tekrar seçilebilmesi için çağrılır.
+     */
+    async cancelPendingTickets(identifier, userId, guestId, showtimeId) {
+        // PENDING biletleri çek (kimin olduğunu belirle)
+        const whereClause = userId
+            ? 'user_id = $1 AND showtime_id = $2 AND status = $3'
+            : 'guest_id = $1 AND showtime_id = $2 AND status = $3';
+        const queryValues = [userId || guestId, showtimeId, 'PENDING'];
+
+        const result = await db.query(
+            `DELETE FROM tickets WHERE ${whereClause} RETURNING seat_id`,
+            queryValues
+        );
+
+        const cancelledSeatIds = result.rows.map(r => r.seat_id);
+
+        // Redis lock'larını da temizle
+        await redis.connect();
+        if (redis.isAvailable() && cancelledSeatIds.length > 0) {
+            const client = redis.getClient();
+            for (const seatId of cancelledSeatIds) {
+                const lockKey = `seat_lock:${showtimeId}:${seatId}`;
+                try { await client.del(lockKey); } catch (e) {}
+            }
+        }
+
+        return cancelledSeatIds;
+    }
 }
 
 module.exports = new ReservationService();

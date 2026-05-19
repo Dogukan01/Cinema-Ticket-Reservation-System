@@ -83,6 +83,26 @@ class ReservationController {
             return res.status(400).json({ error: error.message });
         }
     }
+
+    /**
+     * Kullanıcının bir seans için PENDING biletlerini iptal eder (checkout'tan geri dönüş).
+     */
+    async cancelPending(req, res) {
+        try {
+            const { showtimeId } = req.body;
+            const identifier = req.user.identifier;
+            const userId   = req.user.isGuest ? null : req.user.id;
+            const guestId  = req.user.isGuest ? req.user.guestId : null;
+
+            if (!showtimeId) return res.status(400).json({ error: 'showtimeId zorunludur.' });
+
+            const cancelledSeats = await reservationService.cancelPendingTickets(identifier, userId, guestId, showtimeId);
+            return res.status(200).json({ message: 'PENDING biletler iptal edildi.', cancelledSeats });
+        } catch (error) {
+            console.error('Cancel pending hatası:', error.message);
+            return res.status(500).json({ error: error.message });
+        }
+    }
 }
 
 module.exports = new ReservationController();
