@@ -12,7 +12,7 @@ class AuthService {
      * Yeni Kullanıcı Kaydı (Register)
      */
     async register(userData) {
-        const { firstName, lastName, email, password, role, identityNumber, birthDate } = userData;
+        const { firstName, lastName, email, password, role, identityNumber, birthDate, phoneNumber, gender, smsAllowed, emailAllowed } = userData;
 
         // 1. Email kontrolü (Kullanıcı zaten var mı?)
         const userExists = await db.query('SELECT id FROM users WHERE email = $1', [email]);
@@ -25,16 +25,28 @@ class AuthService {
         const passwordHash = await bcrypt.hash(password, saltRounds);
 
         // 3. TC Kimlik Numarasını (PII) Şifreleme (AES-256-GCM)
-        const encryptedIdentity = EncryptionService.encrypt(identityNumber);
+        const encryptedIdentity = identityNumber ? EncryptionService.encrypt(identityNumber) : null;
 
         // 4. Veritabanına kaydetme
         const query = `
             INSERT INTO users 
-            (first_name, last_name, email, password_hash, role, identity_number, birth_date) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-            RETURNING id, first_name, last_name, email, role
+            (first_name, last_name, email, password_hash, role, identity_number, birth_date, phone_number, gender, sms_allowed, email_allowed) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            RETURNING id, first_name, last_name, email, role, phone_number, gender, sms_allowed, email_allowed
         `;
-        const values = [firstName, lastName, email, passwordHash, role || 'customer', encryptedIdentity, birthDate];
+        const values = [
+            firstName, 
+            lastName, 
+            email, 
+            passwordHash, 
+            role || 'customer', 
+            encryptedIdentity, 
+            birthDate,
+            phoneNumber || null,
+            gender || null,
+            smsAllowed || false,
+            emailAllowed || false
+        ];
 
         const result = await db.query(query, values);
         return result.rows[0]; // Şifreler haricinde kullanıcı bilgisini döndürüyoruz

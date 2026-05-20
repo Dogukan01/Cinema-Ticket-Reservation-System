@@ -8,11 +8,11 @@ class AuthController {
      */
     async register(req, res, next) {
         try {
-            const { firstName, lastName, email, password, role, identityNumber, birthDate } = req.body;
+            const { firstName, lastName, email, password, role, identityNumber, birthDate, phoneNumber, gender, smsAllowed, emailAllowed } = req.body;
 
 
             const newUser = await authService.register({
-                firstName, lastName, email, password, role, identityNumber, birthDate
+                firstName, lastName, email, password, role, identityNumber, birthDate, phoneNumber, gender, smsAllowed, emailAllowed
             });
 
             return res.status(201).json({

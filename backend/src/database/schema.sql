@@ -20,11 +20,16 @@ CREATE TABLE IF NOT EXISTS users (
     role user_role DEFAULT 'customer',
     identity_number VARCHAR(255), 
     birth_date DATE,
+    phone_number VARCHAR(50),
+    gender VARCHAR(20),
+    sms_allowed BOOLEAN DEFAULT FALSE,
+    email_allowed BOOLEAN DEFAULT FALSE,
     is_mfa_enabled BOOLEAN DEFAULT FALSE,
     mfa_secret VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
 
 -- ==========================================
 -- Epic 2.2: Katalog Servisi Tabloları
@@ -106,3 +111,10 @@ CREATE INDEX IF NOT EXISTS idx_showtimes_hall_id ON showtimes(hall_id);
 CREATE INDEX IF NOT EXISTS idx_tickets_showtime_id ON tickets(showtime_id);
 CREATE INDEX IF NOT EXISTS idx_tickets_user_id ON tickets(user_id);
 CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status);
+
+-- Migration steps for existing database schema
+ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number VARCHAR(50);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS gender VARCHAR(20);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS sms_allowed BOOLEAN DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_allowed BOOLEAN DEFAULT FALSE;
+
