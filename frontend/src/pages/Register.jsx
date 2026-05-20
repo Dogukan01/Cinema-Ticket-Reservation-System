@@ -104,6 +104,14 @@ export default function Register() {
         }
     }, [captchaCode]);
 
+    const focusAndScroll = (id) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.focus();
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    };
+
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
@@ -115,28 +123,107 @@ export default function Register() {
     const handleRegister = async (e) => {
         e.preventDefault();
         
-        if (formData.password !== formData.passwordConfirm) {
-            setErrorMsg('Girilen şifreler birbiriyle uyuşmuyor.');
+        // 1. First Name
+        if (!formData.firstName.trim()) {
+            setErrorMsg('Lütfen adınızı giriniz.');
+            focusAndScroll('firstName');
+            generateCaptcha();
             return;
         }
 
+        // 2. Last Name
+        if (!formData.lastName.trim()) {
+            setErrorMsg('Lütfen soyadınızı giriniz.');
+            focusAndScroll('lastName');
+            generateCaptcha();
+            return;
+        }
+
+        // 3. Email
+        if (!formData.email.trim()) {
+            setErrorMsg('Lütfen e-posta adresinizi giriniz.');
+            focusAndScroll('email');
+            generateCaptcha();
+            return;
+        }
+
+        // 4. Phone Number & TR Phone validation
+        if (!formData.phoneNumber.trim()) {
+            setErrorMsg('Lütfen cep telefonunuzu giriniz.');
+            focusAndScroll('phoneNumber');
+            generateCaptcha();
+            return;
+        }
+        
+        const trPhoneRegex = /^(?:\+90|0)?5[0-9]{9}$/;
+        const sanitizedPhone = formData.phoneNumber.replace(/\s+/g, '');
+        if (!trPhoneRegex.test(sanitizedPhone)) {
+            setErrorMsg('Lütfen geçerli bir Türkiye telefon numarası giriniz (Örn: 05xxxxxxxxx).');
+            focusAndScroll('phoneNumber');
+            generateCaptcha();
+            return;
+        }
+
+        // 5. Birth Date
         if (!formData.birthDay || !formData.birthMonth || !formData.birthYear) {
             setErrorMsg('Lütfen doğum tarihinizi gün, ay ve yıl olarak seçin.');
+            if (!formData.birthDay) focusAndScroll('birthDay');
+            else if (!formData.birthMonth) focusAndScroll('birthMonth');
+            else focusAndScroll('birthYear');
+            generateCaptcha();
             return;
         }
 
+        // 6. Gender
         if (!formData.gender) {
             setErrorMsg('Lütfen cinsiyetinizi seçin.');
+            focusAndScroll('gender');
+            generateCaptcha();
             return;
         }
 
+        // 7. Password
+        if (!formData.password) {
+            setErrorMsg('Lütfen şifre giriniz.');
+            focusAndScroll('password');
+            generateCaptcha();
+            return;
+        }
+
+        // 8. Password Confirm
+        if (!formData.passwordConfirm) {
+            setErrorMsg('Lütfen şifrenizi onaylayın.');
+            focusAndScroll('passwordConfirm');
+            generateCaptcha();
+            return;
+        }
+
+        if (formData.password !== formData.passwordConfirm) {
+            setErrorMsg('Girilen şifreler birbiriyle uyuşmuyor.');
+            focusAndScroll('passwordConfirm');
+            generateCaptcha();
+            return;
+        }
+
+        // 9. KVKK
         if (!formData.kvkkAccepted) {
             setErrorMsg('Devam etmek için KVKK onay metnini kabul etmelisiniz.');
+            focusAndScroll('kvkkAccepted');
+            generateCaptcha();
+            return;
+        }
+
+        // 10. Captcha verification
+        if (!captchaInput.trim()) {
+            setErrorMsg('Lütfen güvenlik kodunu giriniz.');
+            focusAndScroll('captchaInput');
+            generateCaptcha();
             return;
         }
 
         if (captchaInput.toLowerCase() !== captchaCode.toLowerCase()) {
             setErrorMsg('Güvenlik kodunu yanlış girdiniz. Lütfen tekrar deneyin.');
+            focusAndScroll('captchaInput');
             generateCaptcha();
             return;
         }
@@ -410,7 +497,7 @@ export default function Register() {
             )}
 
             {/* Form */}
-            <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <form onSubmit={handleRegister} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 
                 {/* Ad & Soyad */}
                 <div className="side-by-side" style={{ display: 'flex', gap: '15px' }}>
@@ -418,6 +505,7 @@ export default function Register() {
                         <input 
                             type="text" 
                             name="firstName"
+                            id="firstName"
                             required
                             placeholder="Adın *"
                             value={formData.firstName}
@@ -429,6 +517,7 @@ export default function Register() {
                         <input 
                             type="text" 
                             name="lastName"
+                            id="lastName"
                             required
                             placeholder="Soyadın *"
                             value={formData.lastName}
@@ -443,6 +532,7 @@ export default function Register() {
                     <input 
                         type="email" 
                         name="email"
+                        id="email"
                         required
                         placeholder="E-Posta *"
                         value={formData.email}
@@ -456,6 +546,7 @@ export default function Register() {
                     <input 
                         type="tel" 
                         name="phoneNumber"
+                        id="phoneNumber"
                         required
                         placeholder="Cep Telefonu *"
                         value={formData.phoneNumber}
@@ -473,6 +564,7 @@ export default function Register() {
                         <div style={{ flex: 1 }}>
                             <select 
                                 name="birthDay"
+                                id="birthDay"
                                 required
                                 value={formData.birthDay}
                                 onChange={handleChange}
@@ -487,6 +579,7 @@ export default function Register() {
                         <div style={{ flex: 1.5 }}>
                             <select 
                                 name="birthMonth"
+                                id="birthMonth"
                                 required
                                 value={formData.birthMonth}
                                 onChange={handleChange}
@@ -501,6 +594,7 @@ export default function Register() {
                         <div style={{ flex: 1.2 }}>
                             <select 
                                 name="birthYear"
+                                id="birthYear"
                                 required
                                 value={formData.birthYear}
                                 onChange={handleChange}
@@ -525,6 +619,7 @@ export default function Register() {
                             <input 
                                 type="radio" 
                                 name="gender" 
+                                id="gender"
                                 value="Kadın"
                                 checked={formData.gender === 'Kadın'}
                                 onChange={handleChange}
@@ -536,6 +631,7 @@ export default function Register() {
                             <input 
                                 type="radio" 
                                 name="gender" 
+                                id="gender"
                                 value="Erkek"
                                 checked={formData.gender === 'Erkek'}
                                 onChange={handleChange}
@@ -552,6 +648,7 @@ export default function Register() {
                         <input 
                             type={showPassword ? 'text' : 'password'} 
                             name="password"
+                            id="password"
                             required
                             placeholder="Şifre *"
                             value={formData.password}
@@ -593,6 +690,7 @@ export default function Register() {
                         <input 
                             type={showPasswordConfirm ? 'text' : 'password'} 
                             name="passwordConfirm"
+                            id="passwordConfirm"
                             required
                             placeholder="Şifre Tekrar *"
                             value={formData.passwordConfirm}
@@ -669,6 +767,7 @@ export default function Register() {
                         <input 
                             type="checkbox" 
                             name="kvkkAccepted"
+                            id="kvkkAccepted"
                             checked={formData.kvkkAccepted}
                             onChange={handleCheckboxChange}
                             className="custom-checkbox"
@@ -753,6 +852,7 @@ export default function Register() {
                             <input 
                                 type="text"
                                 required
+                                id="captchaInput"
                                 value={captchaInput}
                                 onChange={(e) => setCaptchaInput(e.target.value)}
                                 placeholder="Görseldeki Kodu Yazınız"
