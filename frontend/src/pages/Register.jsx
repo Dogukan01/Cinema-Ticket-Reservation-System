@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import api from '../utils/api';
 
@@ -20,14 +20,89 @@ export default function Register() {
         passwordConfirm: '',
         smsAllowed: false,
         emailAllowed: false,
-        kvkkAccepted: false,
-        recaptchaChecked: false
+        kvkkAccepted: false
     });
     
+    const [captchaCode, setCaptchaCode] = useState('');
+    const [captchaInput, setCaptchaInput] = useState('');
+    const canvasRef = useRef(null);
+
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
+    const [showKvkkModal, setShowKvkkModal] = useState(false);
+
+    const generateCaptcha = () => {
+        const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz';
+        let code = '';
+        for (let i = 0; i < 6; i++) {
+            code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        setCaptchaCode(code);
+        setCaptchaInput('');
+    };
+
+    const drawCaptcha = (code) => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Background color
+        ctx.fillStyle = '#23272a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Add some noise lines
+        for (let i = 0; i < 6; i++) {
+            ctx.strokeStyle = `rgba(${Math.floor(Math.random() * 150) + 100}, ${Math.floor(Math.random() * 100) + 100}, ${Math.floor(Math.random() * 100) + 100}, 0.3)`;
+            ctx.lineWidth = Math.random() * 2 + 1;
+            ctx.beginPath();
+            ctx.moveTo(Math.random() * canvas.width, Math.random() * canvas.height);
+            ctx.lineTo(Math.random() * canvas.width, Math.random() * canvas.height);
+            ctx.stroke();
+        }
+
+        // Add some noise dots
+        for (let i = 0; i < 40; i++) {
+            ctx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.2})`;
+            ctx.beginPath();
+            ctx.arc(Math.random() * canvas.width, Math.random() * canvas.height, Math.random() * 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Draw text characters with random rotation, color, and font size
+        ctx.textBaseline = 'middle';
+        ctx.font = "bold 24px 'Outfit', 'Inter', sans-serif";
+
+        for (let i = 0; i < code.length; i++) {
+            const char = code[i];
+            const x = 15 + i * 26;
+            const y = canvas.height / 2 + (Math.random() * 8 - 4);
+            const angle = (Math.random() * 30 - 15) * Math.PI / 180;
+
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+
+            ctx.fillStyle = `hsl(${Math.random() * 360}, 75%, 75%)`;
+            ctx.fillText(char, 0, 0);
+            ctx.restore();
+        }
+    };
+
+    useEffect(() => {
+        generateCaptcha();
+    }, []);
+
+    useEffect(() => {
+        if (captchaCode) {
+            drawCaptcha(captchaCode);
+        }
+    }, [captchaCode]);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -60,8 +135,9 @@ export default function Register() {
             return;
         }
 
-        if (!formData.recaptchaChecked) {
-            setErrorMsg('Lütfen robot olmadığınızı doğrulayın.');
+        if (captchaInput.toLowerCase() !== captchaCode.toLowerCase()) {
+            setErrorMsg('Güvenlik kodunu yanlış girdiniz. Lütfen tekrar deneyin.');
+            generateCaptcha();
             return;
         }
 
@@ -103,6 +179,7 @@ export default function Register() {
         } catch (err) {
             console.error('Registration error:', err);
             setErrorMsg(err.response?.data?.error || 'Kayıt sırasında bir hata oluştu. Lütfen bilgilerinizi kontrol edin.');
+            generateCaptcha();
         } finally {
             setLoading(false);
         }
@@ -246,6 +323,10 @@ export default function Register() {
                 .sbrs-submit-btn:disabled {
                     opacity: 0.6 !important;
                     cursor: not-allowed !important;
+                }
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: scale(0.95); }
+                    to { opacity: 1; transform: scale(1); }
                 }
                 @media (max-width: 600px) {
                     .side-by-side {
@@ -556,7 +637,7 @@ export default function Register() {
                     
                     {/* Marketing Text */}
                     <p style={{ fontSize: '0.78rem', color: '#94a3b8', lineHeight: '1.4', margin: 0 }}>
-                        SBRS Cinema Turizm ve Sportif Tesisler İşl. A.Ş' ye verdiğim iletişim onay formundaki iletişim bilgilerimin kullanılarak, tarafıma tanıtım, kampanya, promosyon, indirim, hediye, fırsat ve SBRS Cinema Club etkinliklerine ilişkin bilgi vb. içerikte ticari ileti gönderilmesine onay veriyorum.
+                        SBRS Cinema A.Ş.'ye verdiğim iletişim onay formundaki iletişim bilgilerimin kullanılarak, tarafıma tanıtım, kampanya, promosyon, indirim, hediye, fırsat ve SBRS Cinema Club etkinliklerine ilişkin bilgi vb. içerikte ticari ileti gönderilmesine onay veriyorum.
                     </p>
 
                     {/* Marketing SMS & Email Checkboxes */}
@@ -588,7 +669,6 @@ export default function Register() {
                         <input 
                             type="checkbox" 
                             name="kvkkAccepted"
-                            required
                             checked={formData.kvkkAccepted}
                             onChange={handleCheckboxChange}
                             className="custom-checkbox"
@@ -596,52 +676,89 @@ export default function Register() {
                         />
                         <span>
                             SBRS Cinema ve Sportif Tesisler İşletmeciliği A.Ş'ye verdiğim tüm kişisel bilgilerimin{' '}
-                            <a href="#" onClick={(e) => e.preventDefault()} style={{ color: 'var(--accent-color)', textDecoration: 'underline', fontWeight: '600' }}>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    setShowKvkkModal(true);
+                                }}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: 0,
+                                    color: 'var(--accent-color)',
+                                    textDecoration: 'underline',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    fontSize: '0.82rem',
+                                    fontFamily: 'inherit'
+                                }}
+                            >
                                 6698 sayılı Kişisel Verilerin Korunması
-                            </a>{' '}
+                            </button>{' '}
                             Hakkındaki Kanunun kapsamı ve sınırları çerçevesinde kullanılmasına onay veriyorum.
                         </span>
                     </label>
                 </div>
 
-                {/* reCAPTCHA Mock */}
+                {/* Real Canvas-based Captcha */}
                 <div style={{
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    background: '#f9f9f9',
-                    border: '1px solid #d3d3d3',
-                    borderRadius: '3px',
-                    padding: '10px 14px',
-                    width: '302px',
-                    height: '76px',
-                    margin: '15px auto',
-                    boxShadow: '0px 1px 4px rgba(0,0,0,0.08)'
+                    flexDirection: 'column',
+                    gap: '12px',
+                    background: '#1f2225',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    marginTop: '10px'
                 }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', margin: 0, width: 'auto' }}>
-                        <input 
-                            type="checkbox" 
-                            checked={formData.recaptchaChecked}
-                            onChange={(e) => setFormData({ ...formData, recaptchaChecked: e.target.checked })}
-                            style={{ width: '24px', height: '24px', cursor: 'pointer', margin: 0 }}
-                        />
-                        <span style={{ color: '#000000', fontSize: '13px', fontFamily: 'Roboto, Arial, sans-serif', fontWeight: '400' }}>
-                            Ben robot değilim
-                        </span>
+                    <label style={{ color: '#94a3b8', fontSize: '0.9rem', fontWeight: '600', margin: 0 }}>
+                        Güvenlik Doğrulaması *
                     </label>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                        <img 
-                            src="https://www.gstatic.com/recaptcha/api2/logo_48.png" 
-                            alt="reCAPTCHA" 
-                            style={{ width: '32px', height: '32px' }}
-                        />
-                        <span style={{ color: '#555555', fontSize: '8px', marginTop: '2px', fontFamily: 'Roboto, Arial, sans-serif' }}>
-                            reCAPTCHA
-                        </span>
-                        <div style={{ display: 'flex', gap: '3px', fontSize: '8px', color: '#555555', fontFamily: 'Roboto, Arial, sans-serif' }}>
-                            <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#555555', textDecoration: 'none' }}>Gizlilik</a>
-                            <span>•</span>
-                            <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer" style={{ color: '#555555', textDecoration: 'none' }}>Koşullar</a>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <canvas 
+                                ref={canvasRef} 
+                                width="180" 
+                                height="50" 
+                                style={{ borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.1)', background: '#23272a' }}
+                            />
+                            <button
+                                type="button"
+                                onClick={generateCaptcha}
+                                title="Yeni Kod Üret"
+                                style={{
+                                    background: 'rgba(255, 255, 255, 0.08)',
+                                    border: 'none',
+                                    color: '#ffffff',
+                                    borderRadius: '6px',
+                                    padding: '10px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transition: 'background 0.2s'
+                                }}
+                                onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'}
+                                onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
+                            >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div style={{ flex: 1, minWidth: '180px' }}>
+                            <input 
+                                type="text"
+                                required
+                                value={captchaInput}
+                                onChange={(e) => setCaptchaInput(e.target.value)}
+                                placeholder="Görseldeki Kodu Yazınız"
+                                className="sbrs-input"
+                                style={{ height: '50px' }}
+                            />
                         </div>
                     </div>
                 </div>
@@ -671,6 +788,131 @@ export default function Register() {
                 </button>
                 
             </form>
+
+            {/* KVKK Modal */}
+            {showKvkkModal && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    backdropFilter: 'blur(8px)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 9999,
+                    padding: '20px'
+                }}>
+                    <div style={{
+                        background: '#1e2225',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        borderRadius: '16px',
+                        maxWidth: '600px',
+                        width: '100%',
+                        maxHeight: '80vh',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)',
+                        animation: 'fadeIn 0.25s ease'
+                    }}>
+                        {/* Header */}
+                        <div style={{
+                            padding: '20px 24px',
+                            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                        }}>
+                            <h3 style={{ margin: 0, color: '#ffffff', fontSize: '1.25rem', fontWeight: '700' }}>
+                                KVKK Aydınlatma Metni
+                            </h3>
+                            <button 
+                                onClick={() => setShowKvkkModal(false)}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: '#8e9499',
+                                    fontSize: '1.5rem',
+                                    cursor: 'pointer',
+                                    padding: '5px'
+                                }}
+                            >
+                                &times;
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div style={{
+                            padding: '24px',
+                            overflowY: 'auto',
+                            color: '#94a3b8',
+                            fontSize: '0.9rem',
+                            lineHeight: '1.6',
+                            flex: 1
+                        }}>
+                            <p style={{ marginTop: 0 }}>
+                                <strong>SBRS Cinema ve Sportif Tesisler İşletmeciliği A.Ş.</strong> (“Şirket”) olarak, 6698 sayılı Kişisel Verilerin Korunması Kanunu (“KVKK”) uyarınca, veri sorumlusu sıfatımızla, kişisel verilerinizin güvenliğine ve gizliliğine büyük önem vermekteyiz.
+                            </p>
+                            <h4 style={{ color: '#ffffff', marginTop: '20px', marginBottom: '8px' }}>1. Kişisel Verilerin İşlenme Amacı</h4>
+                            <p>
+                                Toplanan kişisel verileriniz (ad, soyad, e-posta, telefon numarası, doğum tarihi, cinsiyet vb.), üyelik işlemlerinin tamamlanması, bilet rezervasyon ve satın alma süreçlerinin yürütülmesi, müşteri hizmetleri süreçlerinin yönetilmesi ve sizlere daha iyi bir sinema deneyimi sunulabilmesi amacıyla işlenmektedir.
+                            </p>
+                            <h4 style={{ color: '#ffffff', marginTop: '20px', marginBottom: '8px' }}>2. Kişisel Verilerin Aktarılması</h4>
+                            <p>
+                                İşlenen kişisel verileriniz, KVKK'nın 8. ve 9. maddelerinde belirtilen kişisel veri işleme şartları ve amaçları çerçevesinde, iş ortaklarımıza, tedarikçilerimize ve kanunen yetkili kamu kurum ve kuruluşlarına aktarılabilecektir.
+                            </p>
+                            <h4 style={{ color: '#ffffff', marginTop: '20px', marginBottom: '8px' }}>3. Haklarınız</h4>
+                            <p>
+                                KVKK'nın 11. maddesi uyarınca, dilediğiniz zaman Şirketimize başvurarak kişisel verilerinizin işlenip işlenmediğini öğrenme, işlenmişse bilgi talep etme, işlenme amacını ve amaca uygun kullanılıp kullanılmadığını öğrenme, yurt içinde veya yurt dışında aktarıldığı üçüncü kişileri bilme, eksik veya yanlış işlenmişse düzeltilmesini isteme haklarına sahipsiniz.
+                            </p>
+                        </div>
+
+                        {/* Footer */}
+                        <div style={{
+                            padding: '20px 24px',
+                            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                            display: 'flex',
+                            justifyContent: 'flex-end',
+                            gap: '12px'
+                        }}>
+                            <button
+                                onClick={() => setShowKvkkModal(false)}
+                                style={{
+                                    background: 'rgba(255, 255, 255, 0.08)',
+                                    color: '#ffffff',
+                                    border: 'none',
+                                    padding: '10px 20px',
+                                    borderRadius: '8px',
+                                    fontWeight: '600',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Kapat
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setFormData({ ...formData, kvkkAccepted: true });
+                                    setShowKvkkModal(false);
+                                }}
+                                style={{
+                                    background: 'var(--accent-color)',
+                                    color: '#ffffff',
+                                    border: 'none',
+                                    padding: '10px 20px',
+                                    borderRadius: '8px',
+                                    fontWeight: '600',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Okudum, Onaylıyorum
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 }
