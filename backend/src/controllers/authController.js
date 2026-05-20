@@ -1,5 +1,6 @@
 const authService = require('../services/authService');
 const jwt = require('jsonwebtoken');
+const { sendWelcomeEmail, sendLoginAlertEmail } = require('../utils/mailer');
 
 class AuthController {
     
@@ -13,6 +14,11 @@ class AuthController {
 
             const newUser = await authService.register({
                 firstName, lastName, email, password, role, identityNumber, birthDate, phoneNumber, gender, smsAllowed, emailAllowed
+            });
+
+            // E-posta gönderimini arka planda başlat (kullanıcıyı bekletmemek için)
+            sendWelcomeEmail(newUser.email, `${newUser.first_name} ${newUser.last_name}`).catch(err => {
+                console.error("Kayıt e-postası arka planda gönderilirken hata:", err);
             });
 
             return res.status(201).json({
@@ -40,6 +46,19 @@ class AuthController {
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: 'strict',
                 maxAge: 7 * 24 * 60 * 60 * 1000 // 7 gün
+            });
+
+            // Giriş bilgilendirme e-postasını arka planda gönder
+            const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'Bilinmeyen IP';
+            const userAgent = req.headers['user-agent'] || 'Bilinmeyen Cihaz/Tarayıcı';
+            const loginDate = new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' });
+            
+            sendLoginAlertEmail(user.email, `${user.first_name} ${user.last_name}`, {
+                date: loginDate,
+                ipAddress,
+                userAgent
+            }).catch(err => {
+                console.error("Giriş uyarı e-postası arka planda gönderilirken hata:", err);
             });
 
             return res.status(200).json({
