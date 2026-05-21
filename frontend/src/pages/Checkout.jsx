@@ -24,14 +24,57 @@ export default function Checkout() {
         setCardNumber(formatted);
     };
 
+    const handleExpiryChange = (e) => {
+        let value = e.target.value;
+        let digits = value.replace(/\D/g, '');
+        if (digits.length > 4) {
+            digits = digits.slice(0, 4);
+        }
+        let formatted = '';
+        if (digits.length > 2) {
+            formatted = `${digits.slice(0, 2)}/${digits.slice(2)}`;
+        } else {
+            formatted = digits;
+        }
+        setExpiry(formatted);
+    };
+
+    const handleCvvChange = (e) => {
+        let value = e.target.value;
+        let digits = value.replace(/\D/g, '');
+        if (digits.length > 3) {
+            digits = digits.slice(0, 3);
+        }
+        setCvv(digits);
+    };
+
     const handlePayment = async (e) => {
         e.preventDefault();
         setLoading(true);
         setErrorMsg('');
 
+        if (!name.trim()) {
+            setErrorMsg('Lütfen kart sahibinin adını giriniz.');
+            setLoading(false);
+            return;
+        }
+
         const cleanCard = cardNumber.replace(/\D/g, '');
         if (cleanCard.length !== 16) {
             setErrorMsg('Lütfen 16 haneli geçerli bir kart numarası giriniz.');
+            setLoading(false);
+            return;
+        }
+
+        const expiryPattern = /^(0[1-9]|1[0-2])\/\d{2}$/;
+        if (!expiry || !expiryPattern.test(expiry)) {
+            setErrorMsg('Lütfen geçerli bir son kullanma tarihi giriniz (AA/YY). Örn: 08/29');
+            setLoading(false);
+            return;
+        }
+
+        if (cvv.length !== 3) {
+            setErrorMsg('Lütfen 3 haneli geçerli bir CVV kodu giriniz.');
             setLoading(false);
             return;
         }
@@ -137,8 +180,9 @@ export default function Checkout() {
                                 type="text" 
                                 required
                                 value={expiry}
-                                onChange={e => setExpiry(e.target.value)}
+                                onChange={handleExpiryChange}
                                 placeholder="AA/YY"
+                                maxLength="5"
                             />
                         </div>
                         <div style={{ flex: 1 }}>
@@ -147,9 +191,9 @@ export default function Checkout() {
                                 type="text" 
                                 required
                                 value={cvv}
-                                onChange={e => setCvv(e.target.value)}
+                                onChange={handleCvvChange}
                                 placeholder="123"
-                                maxLength="4"
+                                maxLength="3"
                             />
                         </div>
                     </div>

@@ -1,4 +1,13 @@
 require('dotenv').config();
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+process.on('uncaughtException', (err, origin) => {
+    console.error(`Caught exception: ${err}\nException origin: ${origin}\nStack: ${err ? err.stack : ''}`);
+    process.exit(1);
+});
+
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');

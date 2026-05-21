@@ -19,6 +19,7 @@ const extractUserOrGuest = (req, res, next) => {
         try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET || 'SBRS_SUPER_SECRET_JWT_KEY');
             req.user.id = decoded.id;
+            req.user.email = decoded.email;
             req.user.isGuest = false;
         } catch (error) {
             // Token geçersizse ama guestId varsa işleme devam edilebilir

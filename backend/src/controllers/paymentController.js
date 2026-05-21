@@ -28,9 +28,11 @@ class PaymentController {
             // E-posta gönderimi
             if (req.user && req.user.email) {
                 const userName = req.user.email.split('@')[0];
+                const ticketIds = paymentResult.confirmedTickets.map(t => t.id);
+                const totalAmount = paymentResult.confirmedTickets.reduce((sum, t) => sum + parseFloat(t.price), 0);
                 const ticketDetails = {
-                    ticketIds: paymentResult.confirmedTickets,
-                    totalAmount: paymentResult.totalAmount
+                    ticketIds,
+                    totalAmount
                 };
                 
                 sendTicketEmail(req.user.email, userName, ticketDetails).catch(err => {

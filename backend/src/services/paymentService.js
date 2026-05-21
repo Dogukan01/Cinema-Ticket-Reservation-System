@@ -34,6 +34,17 @@ class PaymentService {
             throw new Error('Kart numarası geçersiz. Kart numarası tam olarak 16 haneli olmalıdır.');
         }
 
+        // CVV doğrulaması (3 hane ve sadece rakam)
+        if (!cvv || cvv.toString().replace(/\D/g, '').length !== 3) {
+            throw new Error('CVV kodu geçersiz. CVV kodu tam olarak 3 haneli ve sadece rakamlardan oluşmalıdır.');
+        }
+
+        // Son Kullanma Tarihi doğrulaması (AA/YY formatı ve geçerli ay)
+        const expiryPattern = /^(0[1-9]|1[0-2])\/\d{2}$/;
+        if (!expiryDate || !expiryPattern.test(expiryDate)) {
+            throw new Error('Son kullanma tarihi geçersiz. AA/YY formatında ve geçerli bir ay (01-12) olmalıdır.');
+        }
+
         const isPaymentSuccessful = cleanCardNumber.length === 16;
 
         if (!isPaymentSuccessful) {
