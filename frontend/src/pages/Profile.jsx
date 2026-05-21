@@ -32,6 +32,31 @@ export default function Profile() {
         fetchProfile();
     }, [navigate]);
 
+    const canCancel = (ticket) => {
+        if (ticket.status !== 'CONFIRMED') return false;
+        const startTime = new Date(ticket.start_time);
+        const now = new Date();
+        const diffMs = startTime - now;
+        const diffHours = diffMs / (1000 * 60 * 60);
+        return diffHours >= 2;
+    };
+
+    const handleCancelTicket = async (ticketId) => {
+        const confirmCancel = window.confirm("Bu bileti iptal etmek istediğinize emin misiniz? Bilet için kazanılan 10 puan hesabınızdan düşülecek, kullanılan puanlar iade edilecektir.");
+        if (!confirmCancel) return;
+
+        try {
+            await api.post(`/reservations/cancel/${ticketId}`);
+            toast.success("Bilet başarıyla iptal edildi.");
+            
+            // Reload profile data
+            const res = await api.get('/user/profile');
+            setProfile(res.data);
+        } catch (err) {
+            toast.error(err.response?.data?.error || "Bilet iptal edilirken bir hata oluştu.");
+        }
+    };
+
     if (loading) {
         return <div style={{ textAlign: 'center', padding: '50px', color: 'white' }}>Yükleniyor...</div>;
     }
@@ -46,7 +71,7 @@ export default function Profile() {
             
             <div className="glass-panel" style={{ padding: '30px', marginBottom: '40px' }}>
                 <h2 style={{ color: 'white', marginBottom: '20px' }}>Kişisel Bilgiler</h2>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
                     <div>
                         <p style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>Ad Soyad</p>
                         <p style={{ color: 'white', fontSize: '1.2rem' }}>{user.first_name} {user.last_name}</p>
@@ -62,6 +87,10 @@ export default function Profile() {
                     <div>
                         <p style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>Hesap Türü</p>
                         <p style={{ color: 'var(--accent-color)', fontSize: '1.2rem', textTransform: 'capitalize' }}>{user.role}</p>
+                    </div>
+                    <div>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>Sadakat Puanı</p>
+                        <p style={{ color: '#10b981', fontSize: '1.4rem', fontWeight: 'bold' }}>{user.loyalty_points || 0} Puan</p>
                     </div>
                 </div>
             </div>
@@ -94,8 +123,8 @@ export default function Profile() {
                                     Tür: {ticket.ticket_type === 'ADULT' ? 'Yetişkin' : 'Öğrenci'}
                                 </p>
                             </div>
-                            <div style={{ textAlign: 'right' }}>
-                                <p style={{ color: '#10b981', fontSize: '1.4rem', fontWeight: 'bold', marginBottom: '10px' }}>
+                            <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
+                                <p style={{ color: '#10b981', fontSize: '1.4rem', fontWeight: 'bold', margin: 0 }}>
                                     {parseFloat(ticket.price).toFixed(2)} ₺
                                 </p>
                                 <span style={{ 
@@ -103,10 +132,32 @@ export default function Profile() {
                                     background: ticket.status === 'CANCELLED' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)', 
                                     color: ticket.status === 'CANCELLED' ? '#ef4444' : '#10b981', 
                                     borderRadius: '5px',
-                                    fontSize: '0.9rem'
+                                    fontSize: '0.9rem',
+                                    fontWeight: '600'
                                 }}>
                                     {ticket.status === 'CANCELLED' ? 'İPTAL' : 'GEÇERLİ'}
                                 </span>
+                                {canCancel(ticket) && (
+                                    <button 
+                                        onClick={() => handleCancelTicket(ticket.ticket_id)}
+                                        style={{ 
+                                            background: 'rgba(239, 68, 68, 0.2)', 
+                                            border: '1px solid #ef4444', 
+                                            color: '#ef4444', 
+                                            fontSize: '0.85rem',
+                                            padding: '8px 12px',
+                                            borderRadius: '6px',
+                                            cursor: 'pointer',
+                                            fontWeight: '600',
+                                            transition: 'all 0.2s ease',
+                                            marginTop: '5px'
+                                        }}
+                                        onMouseEnter={e => e.target.style.background = '#ef4444'}
+                                        onMouseLeave={e => e.target.style.background = 'rgba(239, 68, 68, 0.2)'}
+                                    >
+                                        Bileti İptal Et
+                                    </button>
+                                )}
                             </div>
                         </div>
                     ))}

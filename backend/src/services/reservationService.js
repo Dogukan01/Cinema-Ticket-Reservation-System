@@ -153,6 +153,88 @@ class ReservationService {
 
         return cancelledSeatIds;
     }
+
+    /**
+     * Satın alınmış onaylı bir bileti iptal eder.
+     * Koşul: Seansa en az 2 saat kalmış olmalı.
+     * Kullanıcının kazandığı puanları düşer ve harcadığı puanları iade eder.
+     */
+    async cancelTicket(userId, ticketId) {
+        // 1. Bileti ve seans saatini getir
+        const ticketRes = await db.query(
+            `SELECT t.id, t.user_id, t.showtime_id, t.status, t.price, t.seat_id,
+                    t.loyalty_points_earned, t.loyalty_points_used, s.start_time
+             FROM tickets t
+             JOIN showtimes s ON t.showtime_id = s.id
+             WHERE t.id = $1`,
+            [ticketId]
+        );
+
+        if (ticketRes.rows.length === 0) {
+            throw new Error('Bilet bulunamadı.');
+        }
+
+        const ticket = ticketRes.rows[0];
+
+        // 2. Yetki kontrolü (Bilet bu kullanıcıya mı ait?)
+        if (ticket.user_id !== userId) {
+            throw new Error('Bu bilet üzerinde işlem yapma yetkiniz yok.');
+        }
+
+        // 3. Statü kontrolü
+        if (ticket.status !== 'CONFIRMED') {
+            throw new Error('Sadece satın alınmış (onaylı) biletler iptal edilebilir.');
+        }
+
+        // 4. Zaman kontrolü (seansa en az 2 saat kala)
+        const startTime = new Date(ticket.start_time);
+        const now = new Date();
+        const diffMs = startTime - now;
+        const diffHours = diffMs / (1000 * 60 * 60);
+
+        if (diffHours < 2) {
+            throw new Error('Biletinizi seans başlangıcına en geç 2 saat kalaya kadar iptal edebilirsiniz.');
+        }
+
+        // 5. Veritabanı işlemleri (Transaction ile)
+        const dbClient = await db.pool.connect();
+        try {
+            await dbClient.query('BEGIN');
+
+            // Bilet durumunu CANCELLED yap
+            await dbClient.query(
+                "UPDATE tickets SET status = 'CANCELLED', updated_at = NOW() WHERE id = $1",
+                [ticketId]
+            );
+
+            // Sadakat puanlarını güncelle
+            // Kazanılan puanları düş, kullanılan puanları iade et
+            const pointsEarned = ticket.loyalty_points_earned || 0;
+            const pointsUsed = ticket.loyalty_points_used || 0;
+
+            const netPointsRefund = pointsUsed - pointsEarned;
+
+            if (netPointsRefund !== 0) {
+                await dbClient.query(
+                    "UPDATE users SET loyalty_points = GREATEST(0, loyalty_points + $1) WHERE id = $2",
+                    [netPointsRefund, userId]
+                );
+            }
+
+            await dbClient.query('COMMIT');
+            return {
+                ticketId: ticketId,
+                status: 'CANCELLED',
+                refundedPoints: pointsUsed,
+                deductedPoints: pointsEarned
+            };
+        } catch (error) {
+            await dbClient.query('ROLLBACK');
+            throw error;
+        } finally {
+            dbClient.release();
+        }
+    }
 }
 
 module.exports = new ReservationService();

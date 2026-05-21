@@ -103,6 +103,29 @@ class ReservationController {
             return res.status(500).json({ error: error.message });
         }
     }
+
+    /**
+     * Satın alınmış bileti iptal eder ve iadesini gerçekleştirir.
+     */
+    async cancelTicket(req, res) {
+        try {
+            const { ticketId } = req.params;
+            const userId = req.user.id;
+
+            if (!ticketId) {
+                return res.status(400).json({ error: 'ticketId zorunludur.' });
+            }
+
+            const result = await reservationService.cancelTicket(userId, ticketId);
+            return res.status(200).json({
+                message: 'Biletiniz başarıyla iptal edildi ve ücret iadeniz yapıldı.',
+                result
+            });
+        } catch (error) {
+            console.error('Bilet İptal Hatası:', error.message);
+            return res.status(400).json({ error: error.message });
+        }
+    }
 }
 
 module.exports = new ReservationController();

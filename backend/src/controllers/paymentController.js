@@ -4,13 +4,34 @@ const { sendTicketEmail } = require('../utils/mailer');
 class PaymentController {
     
     /**
+     * Kupon doğrulaması yapar
+     */
+    async validateCoupon(req, res) {
+        try {
+            const userId = req.user.id || null;
+            const guestId = req.user.guestId || null;
+            const { couponCode, showtimeId } = req.body;
+
+            if (!couponCode || !showtimeId) {
+                return res.status(400).json({ error: 'Kupon kodu ve seans bilgisi zorunludur.' });
+            }
+
+            const validationResult = await paymentService.validateCoupon(userId, guestId, showtimeId, couponCode);
+            return res.status(200).json(validationResult);
+        } catch (error) {
+            console.error('Kupon Doğrulama Hatası:', error.message);
+            return res.status(400).json({ error: error.message });
+        }
+    }
+
+    /**
      * Müşterinin sepetindeki (PENDING) biletleri ödemesi için Endpoint
      */
     async pay(req, res) {
         try {
             const userId = req.user.id || null;
             const guestId = req.user.guestId || null;
-            const { showtimeId, cardNumber, cvv, expiryDate } = req.body;
+            const { showtimeId, cardNumber, cvv, expiryDate, couponCode, usePoints } = req.body;
 
             if (!showtimeId || !cardNumber || !cvv || !expiryDate) {
                 return res.status(400).json({ error: 'Eksik ödeme veya sipariş bilgisi.' });
@@ -22,7 +43,9 @@ class PaymentController {
                 showtimeId, 
                 cardNumber, 
                 cvv, 
-                expiryDate
+                expiryDate,
+                couponCode,
+                usePoints
             );
 
             // E-posta gönderimi

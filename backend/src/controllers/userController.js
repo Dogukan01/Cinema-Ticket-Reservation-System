@@ -6,7 +6,7 @@ class UserController {
             const userId = req.user.id;
             
             // Get user info
-            const userRes = await db.query('SELECT id, first_name, last_name, email, role, created_at FROM users WHERE id = $1', [userId]);
+            const userRes = await db.query('SELECT id, first_name, last_name, email, role, loyalty_points, created_at FROM users WHERE id = $1', [userId]);
             if (userRes.rows.length === 0) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
             
             const user = userRes.rows[0];

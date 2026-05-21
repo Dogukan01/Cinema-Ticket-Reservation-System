@@ -5,18 +5,92 @@ class PaymentService {
     /**
      * Müşterinin PENDING statüsündeki biletlerini bulur ve "Mock" bir ödeme işlemi gerçekleştirir.
      */
-    async processPayment(userId, guestId, showtimeId, cardNumber, cvv, expiryDate) {
+    /**
+     * Kupon kodunu doğrular ve indirim detaylarını döner.
+     */
+    async validateCoupon(userId, guestId, showtimeId, couponCode) {
+        // 1. Kuponu bul
+        const couponRes = await db.query(
+            "SELECT * FROM coupons WHERE code = $1 AND is_active = TRUE",
+            [couponCode]
+        );
+
+        if (couponRes.rows.length === 0) {
+            throw new Error('Geçersiz veya aktif olmayan kupon kodu.');
+        }
+
+        const coupon = couponRes.rows[0];
+
+        // Son kullanma tarihini kontrol et
+        if (coupon.expiry_date && new Date(coupon.expiry_date) < new Date()) {
+            throw new Error('Bu kuponun kullanım süresi dolmuş.');
+        }
+
+        // Sepet tutarını hesapla
+        let pendingResult;
+        if (userId) {
+            pendingResult = await db.query(
+                "SELECT SUM(price) as total FROM tickets WHERE user_id = $1 AND showtime_id = $2 AND status = 'PENDING'",
+                [userId, showtimeId]
+            );
+        } else if (guestId) {
+            pendingResult = await db.query(
+                "SELECT SUM(price) as total FROM tickets WHERE guest_id = $1 AND showtime_id = $2 AND status = 'PENDING'",
+                [guestId, showtimeId]
+            );
+        } else {
+            throw new Error('Kimlik bilgisi bulunamadı.');
+        }
+
+        const totalAmount = parseFloat(pendingResult.rows[0].total || 0);
+        if (totalAmount === 0) {
+            throw new Error('Kupon uygulamak için sepetinizde bilet bulunmalıdır.');
+        }
+
+        // Minimum tutar kontrolü
+        const minAmount = parseFloat(coupon.min_amount);
+        if (totalAmount < minAmount) {
+            throw new Error(`Bu kupon sadece en az ${minAmount} TL tutarındaki alışverişlerde geçerlidir.`);
+        }
+
+        // İndirim miktarını hesapla
+        let discountAmount = 0;
+        if (coupon.discount_type === 'PERCENTAGE') {
+            discountAmount = totalAmount * (parseFloat(coupon.discount_value) / 100);
+        } else if (coupon.discount_type === 'FLAT') {
+            discountAmount = parseFloat(coupon.discount_value);
+        }
+
+        // İndirim sepet tutarından büyük olamaz
+        if (discountAmount > totalAmount) {
+            discountAmount = totalAmount;
+        }
+
+        return {
+            code: coupon.code,
+            discountType: coupon.discount_type,
+            discountValue: parseFloat(coupon.discount_value),
+            minAmount: minAmount,
+            discountAmount: parseFloat(discountAmount.toFixed(2)),
+            newTotal: parseFloat((totalAmount - discountAmount).toFixed(2))
+        };
+    }
+
+    /**
+     * Müşterinin PENDING statüsündeki biletlerini bulur, kupon ve puan indirimlerini uygular ve "Mock" bir ödeme işlemi gerçekleştirir.
+     */
+    async processPayment(userId, guestId, showtimeId, cardNumber, cvv, expiryDate, couponCode, usePoints) {
         // 1. Kullanıcının PENDING biletlerini bul
         let pendingResult;
         
         if (userId) {
             pendingResult = await db.query(
-                "SELECT id, seat_id FROM tickets WHERE user_id = $1 AND showtime_id = $2 AND status = 'PENDING'",
+                "SELECT id, seat_id, price FROM tickets WHERE user_id = $1 AND showtime_id = $2 AND status = 'PENDING'",
                 [userId, showtimeId]
             );
         } else if (guestId) {
             pendingResult = await db.query(
-                "SELECT id, seat_id FROM tickets WHERE guest_id = $1 AND showtime_id = $2 AND status = 'PENDING'",
+                "SELECT id, seat_id, price FROM tickets WHERE guest_id = $1 AND showtime_id = $2 AND status = 'PENDING'",
                 [guestId, showtimeId]
             );
         } else {
@@ -28,7 +102,43 @@ class PaymentService {
         }
 
         const pendingTickets = pendingResult.rows;
+        const baseTotal = pendingTickets.reduce((sum, t) => sum + parseFloat(t.price), 0);
 
+        // Kupon indirimi hesaplama
+        let discountFromCoupon = 0;
+        let validatedCoupon = null;
+
+        if (couponCode) {
+            try {
+                validatedCoupon = await this.validateCoupon(userId, guestId, showtimeId, couponCode);
+                discountFromCoupon = validatedCoupon.discountAmount;
+            } catch (err) {
+                throw new Error(`Kupon uygulaması başarısız: ${err.message}`);
+            }
+        }
+
+        // Sadakat puanı indirimi hesaplama
+        let pointsUsed = 0;
+        let discountFromPoints = 0;
+        let userPoints = 0;
+
+        const remainingAfterCoupon = baseTotal - discountFromCoupon;
+
+        if (userId && usePoints) {
+            const userRes = await db.query("SELECT loyalty_points FROM users WHERE id = $1", [userId]);
+            if (userRes.rows.length > 0) {
+                userPoints = userRes.rows[0].loyalty_points || 0;
+                // 10 puan = 1 TL
+                const maxPointsDiscountTL = userPoints / 10;
+                discountFromPoints = Math.min(maxPointsDiscountTL, remainingAfterCoupon);
+                pointsUsed = Math.floor(discountFromPoints * 10);
+                discountFromPoints = pointsUsed / 10;
+            }
+        }
+
+        const totalDiscount = discountFromCoupon + discountFromPoints;
+
+        // Ödeme kartı doğrulama
         const cleanCardNumber = cardNumber.replace(/\D/g, '');
         if (cleanCardNumber.length !== 16) {
             throw new Error('Kart numarası geçersiz. Kart numarası tam olarak 16 haneli olmalıdır.');
@@ -48,10 +158,37 @@ class PaymentService {
         const isPaymentSuccessful = cleanCardNumber.length === 16;
 
         if (!isPaymentSuccessful) {
-            // Önerildiği gibi, başarısız işlemde biletleri (PENDING) iptal etmiyoruz,
-            // 10 dakika dolana kadar tekrar denemesine izin veriyoruz.
             throw new Error('Ödeme reddedildi! Lütfen limitinizi kontrol edip tekrar deneyin.');
         }
+
+        // İndirimleri biletlere orantılı olarak dağıt
+        let pointsSum = 0;
+        let netPriceSum = 0;
+        const totalNetPrice = baseTotal - totalDiscount;
+
+        const ticketUpdates = pendingTickets.map((t, idx) => {
+            const ticketPrice = parseFloat(t.price);
+            let ticketPointsUsed = 0;
+            let ticketNetPrice = 0;
+
+            if (idx === pendingTickets.length - 1) {
+                ticketPointsUsed = pointsUsed - pointsSum;
+                ticketNetPrice = parseFloat((totalNetPrice - netPriceSum).toFixed(2));
+            } else {
+                ticketPointsUsed = Math.round(baseTotal > 0 ? (ticketPrice / baseTotal) * pointsUsed : 0);
+                ticketNetPrice = parseFloat((ticketPrice - (baseTotal > 0 ? (ticketPrice / baseTotal) * totalDiscount : 0)).toFixed(2));
+                
+                pointsSum += ticketPointsUsed;
+                netPriceSum += ticketNetPrice;
+            }
+
+            return {
+                id: t.id,
+                netPrice: ticketNetPrice,
+                pointsEarned: 10, // Her onaylanmış bilet için +10 puan
+                pointsUsed: ticketPointsUsed
+            };
+        });
 
         // 3. Ödeme Başarılıysa Transaction (İşlem Bloğu) başlat
         const dbClient = await db.pool.connect();
@@ -61,22 +198,34 @@ class PaymentService {
         try {
             await dbClient.query('BEGIN');
 
-            const ticketIds = pendingTickets.map(t => t.id);
-            const seatIds = pendingTickets.map(t => t.seat_id);
+            for (const update of ticketUpdates) {
+                const updateQuery = `
+                    UPDATE tickets 
+                    SET status = 'CONFIRMED', 
+                        price = $2, 
+                        loyalty_points_earned = $3, 
+                        loyalty_points_used = $4,
+                        updated_at = NOW() 
+                    WHERE id = $1
+                `;
+                await dbClient.query(updateQuery, [update.id, update.netPrice, update.pointsEarned, update.pointsUsed]);
+            }
 
-            // Bilet statülerini CONFIRMED yap
-            const updateQuery = `
-                UPDATE tickets 
-                SET status = 'CONFIRMED', updated_at = NOW() 
-                WHERE id = ANY($1::uuid[]) 
-                RETURNING id, seat_id, price
-            `;
-            const confirmedResult = await dbClient.query(updateQuery, [ticketIds]);
+            // Puan kazanımı ve düşümü
+            if (userId) {
+                const totalEarnedPoints = pendingTickets.length * 10;
+                const updatePointsQuery = `
+                    UPDATE users 
+                    SET loyalty_points = GREATEST(0, loyalty_points - $1 + $2) 
+                    WHERE id = $3
+                `;
+                await dbClient.query(updatePointsQuery, [pointsUsed, totalEarnedPoints, userId]);
+            }
 
             // Redis kilitlerini KALICI olarak temizle (Artık koltuklar tamamen satıldı)
             if (redis.isAvailable()) {
-                for (const seatId of seatIds) {
-                    const lockKey = `seat_lock:${showtimeId}:${seatId}`;
+                for (const ticket of pendingTickets) {
+                    const lockKey = `seat_lock:${showtimeId}:${ticket.seat_id}`;
                     await redisClient.del(lockKey);
                 }
             }
@@ -85,6 +234,12 @@ class PaymentService {
 
             // Fatura/Makbuz Numarası oluştur (Sahte)
             const receiptId = 'TRX-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+
+            // Güncellenmiş biletleri geri getir
+            const confirmedResult = await db.query(
+                "SELECT id, seat_id, price FROM tickets WHERE id = ANY($1::uuid[])",
+                [pendingTickets.map(t => t.id)]
+            );
 
             return {
                 receiptId: receiptId,

@@ -5,6 +5,7 @@ const { extractUserOrGuest } = require('../middleware/guestMiddleware');
 const router = express.Router();
 
 // Hem Giriş Yapmış Hem Anonim Kullanıcılar
+router.post('/coupon/validate', extractUserOrGuest, paymentController.validateCoupon);
 router.post('/pay', extractUserOrGuest, paymentController.pay);
 router.get('/invoice/:showtimeId', extractUserOrGuest, paymentController.getInvoice);
 

@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS users (
     email_allowed BOOLEAN DEFAULT FALSE,
     is_mfa_enabled BOOLEAN DEFAULT FALSE,
     mfa_secret VARCHAR(255),
+    loyalty_points INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -98,6 +99,8 @@ CREATE TABLE IF NOT EXISTS tickets (
     seat_id VARCHAR(10) NOT NULL, -- Örn: "A1", "B4"
     status ticket_status DEFAULT 'PENDING',
     price DECIMAL(10, 2) NOT NULL,
+    loyalty_points_earned INTEGER DEFAULT 0,
+    loyalty_points_used INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     -- Bir koltuk aynı seans için yalnızca 1 kez oluşturulabilir (Unique Index)
@@ -130,5 +133,27 @@ BEGIN
     END IF;
 END
 $$;
+
+-- Sadakat Puanları ve Kuponlar Migrasyon Adımları
+ALTER TABLE users ADD COLUMN IF NOT EXISTS loyalty_points INTEGER DEFAULT 0;
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS loyalty_points_earned INTEGER DEFAULT 0;
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS loyalty_points_used INTEGER DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS coupons (
+    code VARCHAR(50) PRIMARY KEY,
+    discount_type VARCHAR(20) NOT NULL, -- 'PERCENTAGE' or 'FLAT'
+    discount_value DECIMAL(10, 2) NOT NULL,
+    min_amount DECIMAL(10, 2) DEFAULT 0.00,
+    expiry_date TIMESTAMP WITH TIME ZONE,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO coupons (code, discount_type, discount_value, min_amount, expiry_date, is_active)
+VALUES 
+('SBRS10', 'PERCENTAGE', 10.00, 0.00, NOW() + INTERVAL '30 days', TRUE),
+('INDIRIM50', 'FLAT', 50.00, 150.00, NOW() + INTERVAL '30 days', TRUE),
+('Bilet30', 'PERCENTAGE', 30.00, 100.00, NOW() + INTERVAL '30 days', TRUE)
+ON CONFLICT (code) DO NOTHING;
 
 
