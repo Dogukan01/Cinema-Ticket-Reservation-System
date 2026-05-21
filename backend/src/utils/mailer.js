@@ -31,52 +31,56 @@ const createTransporter = async () => {
 };
 
 const sendTicketEmail = async (toEmail, userName, ticketDetails) => {
-    const transporter = await createTransporter();
+    try {
+        const transporter = await createTransporter();
 
-    const htmlContent = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-            <div style="text-align: center; margin-bottom: 20px;">
-                <h1 style="color: #ef4444; margin: 0;">SBRS Sinemaları</h1>
-                <p style="color: #666;">Biletiniz başarıyla oluşturuldu!</p>
-            </div>
-            
-            <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px;">
-                <h2 style="margin-top: 0;">Sayın ${userName},</h2>
-                <p>Bilet satın alma işleminiz başarıyla gerçekleşti. Detaylar aşağıdadır:</p>
+        const htmlContent = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <h1 style="color: #ef4444; margin: 0;">SBRS Sinemaları</h1>
+                    <p style="color: #666;">Biletiniz başarıyla oluşturuldu!</p>
+                </div>
                 
-                <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
-                    <tr>
-                        <td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Bilet ID(leri):</strong></td>
-                        <td style="padding: 8px 0; border-bottom: 1px solid #eee; text-align: right;">${ticketDetails.ticketIds.join(', ')}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Toplam Tutar:</strong></td>
-                        <td style="padding: 8px 0; border-bottom: 1px solid #eee; text-align: right; color: #10b981; font-weight: bold;">${ticketDetails.totalAmount} ₺</td>
-                    </tr>
-                </table>
+                <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px;">
+                    <h2 style="margin-top: 0;">Sayın ${userName},</h2>
+                    <p>Bilet satın alma işleminiz başarıyla gerçekleşti. Detaylar aşağıdadır:</p>
+                    
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                        <tr>
+                            <td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Bilet ID(leri):</strong></td>
+                            <td style="padding: 8px 0; border-bottom: 1px solid #eee; text-align: right;">${ticketDetails.ticketIds.join(', ')}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Toplam Tutar:</strong></td>
+                            <td style="padding: 8px 0; border-bottom: 1px solid #eee; text-align: right; color: #10b981; font-weight: bold;">${ticketDetails.totalAmount} ₺</td>
+                        </tr>
+                    </table>
+                    
+                    <p style="margin-top: 20px; font-size: 0.9em; color: #888;">Lütfen bu e-postayı gişede veya salon girişinde görevliye gösteriniz.</p>
+                </div>
                 
-                <p style="margin-top: 20px; font-size: 0.9em; color: #888;">Lütfen bu e-postayı gişede veya salon girişinde görevliye gösteriniz.</p>
+                <div style="text-align: center; margin-top: 20px; font-size: 0.8em; color: #aaa;">
+                    <p>Bizi tercih ettiğiniz için teşekkür ederiz. İyi seyirler!</p>
+                </div>
             </div>
-            
-            <div style="text-align: center; margin-top: 20px; font-size: 0.8em; color: #aaa;">
-                <p>Bizi tercih ettiğiniz için teşekkür ederiz. İyi seyirler!</p>
-            </div>
-        </div>
-    `;
+        `;
 
-    const fromAddress = process.env.SMTP_FROM || '"SBRS Bilet Sistemi" <noreply@sbrscinema.com>';
+        const fromAddress = process.env.SMTP_FROM || '"SBRS Bilet Sistemi" <noreply@sbrscinema.com>';
 
-    const info = await transporter.sendMail({
-        from: fromAddress,
-        to: toEmail,
-        subject: "Sinema Biletiniz Onaylandı! 🎟️",
-        html: htmlContent,
-    });
+        const info = await transporter.sendMail({
+            from: fromAddress,
+            to: toEmail,
+            subject: "Sinema Biletiniz Onaylandı! 🎟️",
+            html: htmlContent,
+        });
 
-    console.log("Bilet e-postası gönderildi: %s", info.messageId);
-    
-    if (info.messageId && !process.env.SMTP_HOST) {
-        console.log("Önizleme URL (Bilet E-Postası): %s", nodemailer.getTestMessageUrl(info));
+        console.log("Bilet e-postası gönderildi: %s", info.messageId);
+        
+        if (info.messageId && !process.env.SMTP_HOST) {
+            console.log("Önizleme URL (Bilet E-Postası): %s", nodemailer.getTestMessageUrl(info));
+        }
+    } catch (error) {
+        console.error("Ticket email error:", error);
     }
 };
 
