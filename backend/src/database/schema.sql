@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS users (
 -- 1. Filmler (Movies) Tablosu
 CREATE TABLE IF NOT EXISTS movies (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    title VARCHAR(255) NOT NULL,
+    title VARCHAR(255) UNIQUE NOT NULL,
     description TEXT,
     duration_minutes INTEGER NOT NULL,
     release_date DATE,
@@ -122,4 +122,13 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS email_allowed BOOLEAN DEFAULT FALSE;
 
 ALTER TABLE showtimes ADD COLUMN IF NOT EXISTS format VARCHAR(50) DEFAULT '2D';
 ALTER TABLE showtimes ADD COLUMN IF NOT EXISTS language_type VARCHAR(50) DEFAULT 'Türkçe Dublaj';
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'unique_movie_title') THEN
+        ALTER TABLE movies ADD CONSTRAINT unique_movie_title UNIQUE (title);
+    END IF;
+END
+$$;
+
 

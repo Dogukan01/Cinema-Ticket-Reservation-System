@@ -34,7 +34,7 @@ class PaymentService {
             throw new Error('Kart numarası geçersiz. Kart numarası tam olarak 16 haneli olmalıdır.');
         }
 
-        const isPaymentSuccessful = cleanCardNumber === '4242424242424242';
+        const isPaymentSuccessful = cleanCardNumber.length === 16;
 
         if (!isPaymentSuccessful) {
             // Önerildiği gibi, başarısız işlemde biletleri (PENDING) iptal etmiyoruz,

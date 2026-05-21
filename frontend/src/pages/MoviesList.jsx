@@ -10,22 +10,13 @@ export default function MoviesList() {
     const [activeTab, setActiveTab] = useState('vizyon'); // 'vizyon' veya 'yakinda'
 
     useEffect(() => {
-        const cached = sessionStorage.getItem('movies_list_cache');
-        if (cached) {
-            setMovies(JSON.parse(cached));
-            setLoading(false);
-        }
-
         const fetchMovies = async () => {
             try {
                 const res = await api.get('/catalog/movies');
                 setMovies(res.data);
-                sessionStorage.setItem('movies_list_cache', JSON.stringify(res.data));
             } catch (err) {
                 console.error('API Error:', err);
-                if (!cached) {
-                    setErrorMsg('Filmler yüklenirken bir sorun oluştu. Lütfen daha sonra tekrar deneyin.');
-                }
+                setErrorMsg('Filmler yüklenirken bir sorun oluştu. Lütfen daha sonra tekrar deneyin.');
             } finally {
                 setLoading(false);
             }

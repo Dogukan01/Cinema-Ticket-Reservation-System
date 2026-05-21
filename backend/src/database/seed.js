@@ -9,6 +9,14 @@ async function runSeed() {
         console.log('Eski veriler temizleniyor...');
         await db.query('TRUNCATE tickets, showtimes, halls, cinemas, movies RESTART IDENTITY CASCADE;');
 
+        // Redis önbelleğini de temizleyelim
+        const redis = require('../config/redis');
+        await redis.connect();
+        if (redis.isAvailable()) {
+            await redis.getClient().flushAll();
+            console.log('Redis önbelleği başarıyla temizlendi.');
+        }
+
         // 2. Birden Fazla Sinema Lokasyonu Ekle
         console.log('Sinema lokasyonları oluşturuluyor...');
         const cinemaLocations = [
@@ -95,42 +103,56 @@ async function runSeed() {
         const nowPlayingMovies = await tmdbService.getNowPlayingMovies();
         const upcomingMovies = await tmdbService.getUpcomingMovies();
         
+        const allMovies = [...nowPlayingMovies, ...upcomingMovies];
+        
+        // Deduplicate movies by title
+        const uniqueMovies = [];
+        const seenTitles = new Set();
+        for (const movie of allMovies) {
+            const cleanTitle = movie.title.trim();
+            if (!seenTitles.has(cleanTitle)) {
+                seenTitles.add(cleanTitle);
+                uniqueMovies.push(movie);
+            }
+        }
+        
         const nowPlayingIds = [];
         const upcomingIds = [];
         
-        console.log('Vizyondaki filmler ekleniyor...');
-        for (const movie of nowPlayingMovies) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        console.log('Filmler veritabanına ekleniyor (çakışma kontrolüyle)...');
+        for (const movie of uniqueMovies) {
             const insertQuery = `
                 INSERT INTO movies (title, description, duration_minutes, release_date, poster_url)
-                VALUES ($1, $2, $3, $4, $5) RETURNING id
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (title) DO UPDATE 
+                SET description = EXCLUDED.description,
+                    duration_minutes = EXCLUDED.duration_minutes,
+                    release_date = EXCLUDED.release_date,
+                    poster_url = EXCLUDED.poster_url
+                RETURNING id, title, release_date
             `;
             const mRes = await db.query(insertQuery, [
-                movie.title, 
+                movie.title.trim(), 
                 movie.description, 
                 movie.durationMinutes, 
                 movie.releaseDate, 
                 movie.posterUrl
             ]);
-            nowPlayingIds.push(mRes.rows[0].id);
+            
+            const dbMovie = mRes.rows[0];
+            const releaseDateObj = new Date(dbMovie.release_date);
+            
+            if (releaseDateObj <= today) {
+                nowPlayingIds.push(dbMovie.id);
+            } else {
+                upcomingIds.push(dbMovie.id);
+            }
         }
         
-        console.log('Gelecek filmler ekleniyor...');
-        for (const movie of upcomingMovies) {
-            const insertQuery = `
-                INSERT INTO movies (title, description, duration_minutes, release_date, poster_url)
-                VALUES ($1, $2, $3, $4, $5) RETURNING id
-            `;
-            const mRes = await db.query(insertQuery, [
-                movie.title, 
-                movie.description, 
-                movie.durationMinutes, 
-                movie.releaseDate, 
-                movie.posterUrl
-            ]);
-            upcomingIds.push(mRes.rows[0].id);
-        }
-        
-        console.log(`${nowPlayingIds.length} vizyonda, ${upcomingIds.length} yakında film eklendi.`);
+        console.log(`${nowPlayingIds.length} vizyonda (seans tanımlanacak), ${upcomingIds.length} yakında film eklendi.`);
 
         // 5. Seansları Ekle (Showtimes) - Toplu INSERT ile hızlı ekleme
         console.log('Seanslar oluşturuluyor (toplu INSERT)...');

@@ -49,35 +49,38 @@ export default function MovieBooking() {
     }, [activeMovieId]);
 
     // Extract unique dates for the movie across all showtimes
-    const uniqueDates = [];
-    const dateKeys = new Set();
-    
-    if (activeMovie?.showtimes) {
-        activeMovie.showtimes.forEach(st => {
-            const dateObj = new Date(st.start_time);
-            const yyyy = dateObj.getFullYear();
-            const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
-            const dd = String(dateObj.getDate()).padStart(2, '0');
-            const dateKey = `${yyyy}-${mm}-${dd}`;
-            
-            if (!dateKeys.has(dateKey)) {
-                dateKeys.add(dateKey);
-                const dayStr = dateObj.toLocaleDateString('tr-TR', { day: 'numeric' });
-                const monthStr = dateObj.toLocaleDateString('tr-TR', { month: 'long' });
-                const weekdayStr = dateObj.toLocaleDateString('tr-TR', { weekday: 'long' });
-                uniqueDates.push({
-                    key: dateKey,
-                    day: dayStr,
-                    month: monthStr,
-                    weekday: weekdayStr,
-                    rawDate: dateObj
-                });
-            }
-        });
-    }
+    const uniqueDates = React.useMemo(() => {
+        const dates = [];
+        const dateKeys = new Set();
+        
+        if (activeMovie?.showtimes) {
+            activeMovie.showtimes.forEach(st => {
+                const dateObj = new Date(st.start_time);
+                const yyyy = dateObj.getFullYear();
+                const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const dd = String(dateObj.getDate()).padStart(2, '0');
+                const dateKey = `${yyyy}-${mm}-${dd}`;
+                
+                if (!dateKeys.has(dateKey)) {
+                    dateKeys.add(dateKey);
+                    const dayStr = dateObj.toLocaleDateString('tr-TR', { day: 'numeric' });
+                    const monthStr = dateObj.toLocaleDateString('tr-TR', { month: 'long' });
+                    const weekdayStr = dateObj.toLocaleDateString('tr-TR', { weekday: 'long' });
+                    dates.push({
+                        key: dateKey,
+                        day: dayStr,
+                        month: monthStr,
+                        weekday: weekdayStr,
+                        rawDate: dateObj
+                    });
+                }
+            });
+        }
 
-    // Sort unique dates chronologically
-    uniqueDates.sort((a, b) => a.rawDate - b.rawDate);
+        // Sort unique dates chronologically
+        dates.sort((a, b) => a.rawDate - b.rawDate);
+        return dates;
+    }, [activeMovie]);
 
     // Auto-select first date when activeMovie changes
     useEffect(() => {

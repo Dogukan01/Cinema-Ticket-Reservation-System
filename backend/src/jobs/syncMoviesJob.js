@@ -22,46 +22,45 @@ class SyncMoviesJob {
             const nowPlaying = await tmdbService.getNowPlayingMovies();
             const upcoming = await tmdbService.getUpcomingMovies();
             const movies = [...nowPlaying, ...upcoming];
+            
+            // Deduplicate movies by title
+            const uniqueMovies = [];
+            const seenTitles = new Set();
+            for (const movie of movies) {
+                const cleanTitle = movie.title.trim();
+                if (!seenTitles.has(cleanTitle)) {
+                    seenTitles.add(cleanTitle);
+                    uniqueMovies.push(movie);
+                }
+            }
+
             let addedCount = 0;
 
-            for (const movie of movies) {
-                // 1. Film veritabanımızda zaten var mı? (İsimden kontrol ediyoruz)
-                const checkRes = await db.query('SELECT id, duration_minutes, release_date FROM movies WHERE title = $1', [movie.title]);
+            for (const movie of uniqueMovies) {
+                const upsertQuery = `
+                    INSERT INTO movies (title, description, duration_minutes, release_date, poster_url)
+                    VALUES ($1, $2, $3, $4, $5)
+                    ON CONFLICT (title) DO UPDATE 
+                    SET description = EXCLUDED.description,
+                        duration_minutes = EXCLUDED.duration_minutes,
+                        release_date = EXCLUDED.release_date,
+                        poster_url = EXCLUDED.poster_url
+                    WHERE movies.description IS DISTINCT FROM EXCLUDED.description
+                       OR movies.duration_minutes IS DISTINCT FROM EXCLUDED.duration_minutes
+                       OR movies.release_date IS DISTINCT FROM EXCLUDED.release_date
+                       OR movies.poster_url IS DISTINCT FROM EXCLUDED.poster_url
+                    RETURNING (xmax = 0) AS is_inserted
+                `;
+                const res = await db.query(upsertQuery, [
+                    movie.title.trim(), 
+                    movie.description, 
+                    movie.durationMinutes, 
+                    movie.releaseDate, 
+                    movie.posterUrl
+                ]);
                 
-                if (checkRes.rows.length === 0) {
-                    // 2. Yoksa ekle
-                    const insertQuery = `
-                        INSERT INTO movies (title, description, duration_minutes, release_date, poster_url)
-                        VALUES ($1, $2, $3, $4, $5)
-                    `;
-                    await db.query(insertQuery, [
-                        movie.title, 
-                        movie.description, 
-                        movie.durationMinutes, 
-                        movie.releaseDate, 
-                        movie.posterUrl
-                    ]);
+                if (res.rows.length > 0 && res.rows[0].is_inserted) {
                     addedCount++;
-                } else {
-                    // 3. Varsa ve veriler güncellenmişse güncelle
-                    const existing = checkRes.rows[0];
-                    let needsUpdate = false;
-                    const updates = [];
-                    const values = [];
-
-                    if (existing.duration_minutes !== movie.durationMinutes) {
-                        needsUpdate = true;
-                        updates.push(`duration_minutes = $${updates.length + 1}`);
-                        values.push(movie.durationMinutes);
-                    }
-
-                    if (needsUpdate) {
-                        values.push(existing.id);
-                        await db.query(
-                            `UPDATE movies SET ${updates.join(', ')} WHERE id = $${values.length}`,
-                            values
-                        );
-                    }
                 }
             }
 

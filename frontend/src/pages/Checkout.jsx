@@ -7,9 +7,9 @@ export default function Checkout() {
     const { id: showtimeId } = useParams();
     const navigate = useNavigate();
 
-    const [cardNumber, setCardNumber] = useState('4242 4242 4242 4242'); // Autofilled for test convenience
-    const [expiry, setExpiry] = useState('12/26');
-    const [cvv, setCvv] = useState('123');
+    const [cardNumber, setCardNumber] = useState('');
+    const [expiry, setExpiry] = useState('');
+    const [cvv, setCvv] = useState('');
     const [name, setName] = useState('');
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
@@ -121,7 +121,7 @@ export default function Checkout() {
                         />
                     </div>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: '600' }}>Kart Numarası (Test kartı otomatik doldurulmuştur)</label>
+                        <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: '600' }}>Kart Numarası (Test için 16 haneli herhangi bir numara girebilirsiniz)</label>
                         <input 
                             type="text" 
                             required

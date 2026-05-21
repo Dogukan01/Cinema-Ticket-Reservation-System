@@ -15,6 +15,12 @@ class CatalogService {
         const values = [title, description, durationMinutes, releaseDate, posterUrl];
 
         const result = await db.query(query, values);
+        
+        // Önbelleği temizle
+        if (redis.isAvailable()) {
+            await redis.getClient().del('catalog:movies');
+        }
+        
         return result.rows[0];
     }
 
@@ -154,6 +160,13 @@ class CatalogService {
             VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *
         `;
         const insertResult = await db.query(insertQuery, [movieId, hallId, start.toISOString(), end.toISOString(), price, format, languageType]);
+
+        // Önbelleği temizle
+        if (redis.isAvailable()) {
+            await redis.getClient().del(`catalog:movie:${movieId}`);
+            await redis.getClient().del('catalog:movies');
+        }
+
         return insertResult.rows[0];
     }
 }
