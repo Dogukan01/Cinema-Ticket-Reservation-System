@@ -41,49 +41,60 @@ class CatalogService {
         await redis.connect();
         const cacheKey = `catalog:movie:${movieId}`;
 
+        let finalData = null;
         if (redis.isAvailable()) {
             const client = redis.getClient();
             const cachedData = await client.get(cacheKey);
-            if (cachedData) return JSON.parse(cachedData);
+            if (cachedData) {
+                finalData = JSON.parse(cachedData);
+            }
         }
 
-        // 1. Film Detayları
-        const movieResult = await db.query('SELECT * FROM movies WHERE id = $1', [movieId]);
-        if (movieResult.rows.length === 0) throw new Error('Film bulunamadı.');
-        const movie = movieResult.rows[0];
+        if (!finalData) {
+            // 1. Film Detayları
+            const movieResult = await db.query('SELECT * FROM movies WHERE id = $1', [movieId]);
+            if (movieResult.rows.length === 0) throw new Error('Film bulunamadı.');
+            const movie = movieResult.rows[0];
 
-        // TMDB detay zenginleştirmesi
-        let enrichment = null;
-        try {
-            const tmdbService = require('./tmdbService');
-            enrichment = await tmdbService.enrichMovieDetails(movie.title);
-        } catch (err) {
-            console.error('TMDB Enrichment failed:', err.message);
+            // TMDB detay zenginleştirmesi
+            let enrichment = null;
+            try {
+                const tmdbService = require('./tmdbService');
+                enrichment = await tmdbService.enrichMovieDetails(movie.title);
+            } catch (err) {
+                console.error('TMDB Enrichment failed:', err.message);
+            }
+
+            // 2. Bu filme ait Seanslar (Sinema ve Salon bilgileriyle birleştirilmiş)
+            const showtimesQuery = `
+                SELECT s.id as showtime_id, s.start_time, s.price, 
+                       h.name as hall_name, h.id as hall_id,
+                       c.name as cinema_name, c.id as cinema_id
+                FROM showtimes s
+                JOIN halls h ON s.hall_id = h.id
+                JOIN cinemas c ON h.cinema_id = c.id
+                WHERE s.movie_id = $1 AND s.start_time >= NOW() - INTERVAL '2 hours'
+                ORDER BY c.name, s.start_time ASC
+            `;
+            const showtimesResult = await db.query(showtimesQuery, [movieId]);
+
+            finalData = {
+                ...movie,
+                ...enrichment,
+                showtimes: showtimesResult.rows
+            };
+
+
+            if (redis.isAvailable()) {
+                const client = redis.getClient();
+                await client.setEx(cacheKey, 600, JSON.stringify(finalData));
+            }
         }
 
-        // 2. Bu filme ait Seanslar (Sinema ve Salon bilgileriyle birleştirilmiş)
-        const showtimesQuery = `
-            SELECT s.id as showtime_id, s.start_time, s.price, 
-                   h.name as hall_name, h.id as hall_id,
-                   c.name as cinema_name, c.id as cinema_id
-            FROM showtimes s
-            JOIN halls h ON s.hall_id = h.id
-            JOIN cinemas c ON h.cinema_id = c.id
-            WHERE s.movie_id = $1
-            ORDER BY c.name, s.start_time ASC
-        `;
-        const showtimesResult = await db.query(showtimesQuery, [movieId]);
-
-        const finalData = {
-            ...movie,
-            ...enrichment,
-            showtimes: showtimesResult.rows
-        };
-
-
-        if (redis.isAvailable()) {
-            const client = redis.getClient();
-            await client.setEx(cacheKey, 600, JSON.stringify(finalData));
+        // Saati ve tarihi geçmiş seansları milisaniye duyarlılığıyla filtrele
+        const now = new Date();
+        if (finalData && finalData.showtimes) {
+            finalData.showtimes = finalData.showtimes.filter(st => new Date(st.start_time) >= now);
         }
 
         return finalData;

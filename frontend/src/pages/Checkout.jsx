@@ -14,10 +14,27 @@ export default function Checkout() {
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
 
+    const handleCardNumberChange = (e) => {
+        let value = e.target.value;
+        let digits = value.replace(/\D/g, '');
+        if (digits.length > 16) {
+            digits = digits.slice(0, 16);
+        }
+        let formatted = digits.replace(/(\d{4})(?=\d)/g, '$1 ');
+        setCardNumber(formatted);
+    };
+
     const handlePayment = async (e) => {
         e.preventDefault();
         setLoading(true);
         setErrorMsg('');
+
+        const cleanCard = cardNumber.replace(/\D/g, '');
+        if (cleanCard.length !== 16) {
+            setErrorMsg('Lütfen 16 haneli geçerli bir kart numarası giriniz.');
+            setLoading(false);
+            return;
+        }
 
         try {
             const res = await api.post('/payment/pay', {
@@ -109,7 +126,8 @@ export default function Checkout() {
                             type="text" 
                             required
                             value={cardNumber}
-                            onChange={e => setCardNumber(e.target.value)}
+                            onChange={handleCardNumberChange}
+                            placeholder="4242 4242 4242 4242"
                         />
                     </div>
                     <div style={{ display: 'flex', gap: '20px' }}>

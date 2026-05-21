@@ -11,7 +11,7 @@ export default function Register() {
         firstName: '',
         lastName: '',
         email: '',
-        phoneNumber: '',
+        phoneNumber: '05',
         birthDay: '',
         birthMonth: '',
         birthYear: '',
@@ -116,6 +116,42 @@ export default function Register() {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
+    const handlePhoneChange = (e) => {
+        let value = e.target.value;
+        let digits = value.replace(/\D/g, '');
+        
+        // Ensure starts with 05
+        if (!digits.startsWith('05')) {
+            if (digits.startsWith('5')) {
+                digits = '0' + digits;
+            } else {
+                digits = '05' + digits;
+            }
+        }
+        
+        // Max 11 digits
+        if (digits.length > 11) {
+            digits = digits.slice(0, 11);
+        }
+        
+        // Format as 05XX XXX XX XX (e.g. 0532 123 45 67)
+        let formatted = '';
+        if (digits.length > 0) {
+            formatted += digits.substring(0, Math.min(digits.length, 4));
+        }
+        if (digits.length > 4) {
+            formatted += ' ' + digits.substring(4, Math.min(digits.length, 7));
+        }
+        if (digits.length > 7) {
+            formatted += ' ' + digits.substring(7, Math.min(digits.length, 9));
+        }
+        if (digits.length > 9) {
+            formatted += ' ' + digits.substring(9, Math.min(digits.length, 11));
+        }
+        
+        setFormData({ ...formData, phoneNumber: formatted.trim() });
+    };
+
     const handleCheckboxChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.checked });
     };
@@ -148,17 +184,17 @@ export default function Register() {
         }
 
         // 4. Phone Number & TR Phone validation
-        if (!formData.phoneNumber.trim()) {
+        const sanitizedPhone = formData.phoneNumber.replace(/\D/g, '');
+        if (!sanitizedPhone || sanitizedPhone === '05') {
             setErrorMsg('Lütfen cep telefonunuzu giriniz.');
             focusAndScroll('phoneNumber');
             generateCaptcha();
             return;
         }
         
-        const trPhoneRegex = /^(?:\+90|0)?5[0-9]{9}$/;
-        const sanitizedPhone = formData.phoneNumber.replace(/\s+/g, '');
+        const trPhoneRegex = /^05[0-9]{9}$/;
         if (!trPhoneRegex.test(sanitizedPhone)) {
-            setErrorMsg('Lütfen geçerli bir Türkiye telefon numarası giriniz (Örn: 05xxxxxxxxx).');
+            setErrorMsg('Lütfen geçerli bir Türkiye telefon numarası giriniz (Örn: 05xx xxx xx xx).');
             focusAndScroll('phoneNumber');
             generateCaptcha();
             return;
@@ -240,7 +276,7 @@ export default function Register() {
                 lastName: formData.lastName,
                 email: formData.email,
                 password: formData.password,
-                phoneNumber: formData.phoneNumber,
+                phoneNumber: formData.phoneNumber.replace(/\D/g, ''),
                 birthDate,
                 gender: formData.gender,
                 smsAllowed: formData.smsAllowed,
@@ -548,9 +584,9 @@ export default function Register() {
                         name="phoneNumber"
                         id="phoneNumber"
                         required
-                        placeholder="Cep Telefonu *"
+                        placeholder="Cep Telefonu (05xx xxx xx xx) *"
                         value={formData.phoneNumber}
-                        onChange={handleChange}
+                        onChange={handlePhoneChange}
                         className="sbrs-input"
                     />
                 </div>

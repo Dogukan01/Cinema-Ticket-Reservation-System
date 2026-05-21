@@ -29,9 +29,11 @@ class PaymentService {
 
         const pendingTickets = pendingResult.rows;
 
-        // 2. Mock Ödeme Mantığı (İyzico / Stripe simülasyonu)
-        // Eğer kredi kartı numarası 4242 4242 4242 4242 (Boşluksuz 4242424242424242) ise ödeme başarılıdır.
-        const cleanCardNumber = cardNumber.replace(/\s+/g, '');
+        const cleanCardNumber = cardNumber.replace(/\D/g, '');
+        if (cleanCardNumber.length !== 16) {
+            throw new Error('Kart numarası geçersiz. Kart numarası tam olarak 16 haneli olmalıdır.');
+        }
+
         const isPaymentSuccessful = cleanCardNumber === '4242424242424242';
 
         if (!isPaymentSuccessful) {
@@ -61,9 +63,11 @@ class PaymentService {
             const confirmedResult = await dbClient.query(updateQuery, [ticketIds]);
 
             // Redis kilitlerini KALICI olarak temizle (Artık koltuklar tamamen satıldı)
-            for (const seatId of seatIds) {
-                const lockKey = `seat_lock:${showtimeId}:${seatId}`;
-                await redisClient.del(lockKey);
+            if (redis.isAvailable()) {
+                for (const seatId of seatIds) {
+                    const lockKey = `seat_lock:${showtimeId}:${seatId}`;
+                    await redisClient.del(lockKey);
+                }
             }
 
             await dbClient.query('COMMIT');
