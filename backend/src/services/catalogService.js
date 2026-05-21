@@ -67,7 +67,7 @@ class CatalogService {
 
             // 2. Bu filme ait Seanslar (Sinema ve Salon bilgileriyle birleştirilmiş)
             const showtimesQuery = `
-                SELECT s.id as showtime_id, s.start_time, s.price, 
+                SELECT s.id as showtime_id, s.start_time, s.price, s.format, s.language_type,
                        h.name as hall_name, h.id as hall_id,
                        c.name as cinema_name, c.id as cinema_id
                 FROM showtimes s
@@ -123,7 +123,7 @@ class CatalogService {
     // ==========================================
     // SEANSLAR (SHOWTIMES) VE ÇAKIŞMA ALGORİTMASI
     // ==========================================
-    async createShowtime(movieId, hallId, startTime, price) {
+    async createShowtime(movieId, hallId, startTime, price, format = '2D', languageType = 'Türkçe Dublaj') {
         // 1. Filmin süresini (duration_minutes) öğren
         const movieResult = await db.query('SELECT duration_minutes FROM movies WHERE id = $1', [movieId]);
         if (movieResult.rows.length === 0) throw new Error('Film bulunamadı.');
@@ -150,10 +150,10 @@ class CatalogService {
 
         // 4. Çakışma yoksa seansı kaydet
         const insertQuery = `
-            INSERT INTO showtimes (movie_id, hall_id, start_time, end_time, price)
-            VALUES ($1, $2, $3, $4, $5) RETURNING *
+            INSERT INTO showtimes (movie_id, hall_id, start_time, end_time, price, format, language_type)
+            VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *
         `;
-        const insertResult = await db.query(insertQuery, [movieId, hallId, start.toISOString(), end.toISOString(), price]);
+        const insertResult = await db.query(insertQuery, [movieId, hallId, start.toISOString(), end.toISOString(), price, format, languageType]);
         return insertResult.rows[0];
     }
 }

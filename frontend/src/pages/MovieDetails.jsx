@@ -223,37 +223,57 @@ export default function MovieDetails() {
                             {movie.description || 'Açıklama belirtilmemiş.'}
                         </p>
 
-                        {/* Bilet Satın Al CTA Butonu */}
-                        <button
-                            onClick={() => navigate(`/movies/${id}/booking`)}
-                            style={{
-                                background: 'var(--accent-color)',
-                                border: '1px solid var(--accent-color)',
-                                color: '#000',
-                                padding: '16px 45px',
-                                borderRadius: '30px',
-                                fontSize: '1.15rem',
-                                fontWeight: '800',
-                                cursor: 'pointer',
-                                transition: 'all 0.3s ease',
-                                boxShadow: '0 0 25px rgba(239, 68, 68, 0.4)',
+                        {/* Bilet Satın Al CTA Butonu veya Gelecek Film Uyarısı */}
+                        {movie.release_date && new Date(movie.release_date) > new Date() ? (
+                            <div style={{
+                                background: 'rgba(56, 189, 248, 0.1)',
+                                border: '1px solid rgba(56, 189, 248, 0.25)',
+                                padding: '16px 30px',
+                                borderRadius: '15px',
+                                color: '#38bdf8',
+                                fontSize: '1.1rem',
+                                fontWeight: '700',
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: '10px',
                                 alignSelf: 'flex-start',
-                                marginTop: 'auto'
-                            }}
-                            onMouseOver={e => {
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                                e.currentTarget.style.boxShadow = '0 8px 30px rgba(239, 68, 68, 0.6)';
-                            }}
-                            onMouseOut={e => {
-                                e.currentTarget.style.transform = 'none';
-                                e.currentTarget.style.boxShadow = '0 0 25px rgba(239, 68, 68, 0.4)';
-                            }}
-                        >
-                            🎟️ Seansları Gör & Hemen Bilet Al &rarr;
-                        </button>
+                                marginTop: 'auto',
+                                boxShadow: '0 4px 15px rgba(56, 189, 248, 0.1)'
+                            }}>
+                                📢 Bu film yakında vizyona girecektir. Bilet satışları henüz başlamamıştır.
+                            </div>
+                        ) : (
+                            <button
+                                onClick={() => navigate(`/movies/${id}/booking`)}
+                                style={{
+                                    background: 'var(--accent-color)',
+                                    border: '1px solid var(--accent-color)',
+                                    color: '#000',
+                                    padding: '16px 45px',
+                                    borderRadius: '30px',
+                                    fontSize: '1.15rem',
+                                    fontWeight: '800',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.3s ease',
+                                    boxShadow: '0 0 25px rgba(239, 68, 68, 0.4)',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    alignSelf: 'flex-start',
+                                    marginTop: 'auto'
+                                }}
+                                onMouseOver={e => {
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                    e.currentTarget.style.boxShadow = '0 8px 30px rgba(239, 68, 68, 0.6)';
+                                }}
+                                onMouseOut={e => {
+                                    e.currentTarget.style.transform = 'none';
+                                    e.currentTarget.style.boxShadow = '0 0 25px rgba(239, 68, 68, 0.4)';
+                                }}
+                            >
+                                🎟️ Seansları Gör & Hemen Bilet Al &rarr;
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>

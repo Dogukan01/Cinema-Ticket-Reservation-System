@@ -60,6 +60,81 @@ class TMDBService {
             return this.getFallbackMovies();
         }
     }
+
+    /**
+     * Yakında vizyona girecek filmler için mock fallback verileri üretir.
+     */
+    getFallbackUpcomingMovies() {
+        try {
+            const dataPath = path.join(__dirname, '../data/movies.json');
+            const fileContent = fs.readFileSync(dataPath, 'utf-8');
+            const movies = JSON.parse(fileContent);
+            
+            // 15-30 arasındaki filmleri alıp vizyon tarihlerini geleceğe kuruyoruz
+            return movies.slice(15, 30).map((movie, idx) => {
+                const futureDate = new Date();
+                futureDate.setDate(futureDate.getDate() + 30 + idx * 5); // 30, 35, 40... gün sonrası
+                
+                const yyyy = futureDate.getFullYear();
+                const mm = String(futureDate.getMonth() + 1).padStart(2, '0');
+                const dd = String(futureDate.getDate()).padStart(2, '0');
+                
+                return {
+                    title: movie.title,
+                    description: movie.description || 'Özet bulunmuyor.',
+                    durationMinutes: movie.duration_minutes || 120,
+                    releaseDate: `${yyyy}-${mm}-${dd}`,
+                    posterUrl: movie.poster_url || 'https://via.placeholder.com/500x750?text=No+Poster'
+                };
+            });
+        } catch (error) {
+            console.error('[TMDB ERROR] Fallback JSON okunamadı:', error.message);
+            return [];
+        }
+    }
+
+    /**
+     * Vizyona girecek (yakında) filmleri gerçek TMDB API'sinden getirir.
+     */
+    async getUpcomingMovies() {
+        const apiKey = process.env.TMDB_API_KEY;
+        
+        if (!apiKey || apiKey === 'YOUR_TMDB_API_KEY_HERE') {
+            console.warn('[TMDB WARNING] TMDB_API_KEY bulunamadı. JSON (Fallback) gelecek veriler kullanılıyor...');
+            return this.getFallbackUpcomingMovies();
+        }
+
+        try {
+            console.log('[TMDB] Gelecek filmler API isteği yapılıyor...');
+            const response = await axios.get(`https://api.themoviedb.org/3/movie/upcoming?api_key=${apiKey}&language=tr-TR&page=1`);
+            
+            const mappedMovies = await Promise.all(response.data.results.slice(0, 15).map(async (movie) => {
+                let durationMinutes = 120;
+                try {
+                    const detailRes = await axios.get(`https://api.themoviedb.org/3/movie/${movie.id}?api_key=${apiKey}`);
+                    if (detailRes.data.runtime && detailRes.data.runtime > 0) {
+                        durationMinutes = detailRes.data.runtime;
+                    }
+                } catch (err) {
+                    console.warn(`[TMDB WARNING] Film detayı alınamadı (${movie.title}):`, err.message);
+                }
+
+                return {
+                    title: movie.title,
+                    description: movie.overview || 'Özet bulunmuyor.',
+                    durationMinutes: durationMinutes,
+                    releaseDate: movie.release_date,
+                    posterUrl: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : 'https://via.placeholder.com/500x750?text=No+Poster'
+                };
+            }));
+
+            return mappedMovies;
+        } catch (error) {
+            console.error('[TMDB ERROR] Upcoming fetch failed:', error.message, '- Gelecek mock verilere dönülüyor...');
+            return this.getFallbackUpcomingMovies();
+        }
+    }
+
     async enrichMovieDetails(title) {
         const apiKey = process.env.TMDB_API_KEY;
         if (!apiKey || apiKey === 'YOUR_TMDB_API_KEY_HERE') {

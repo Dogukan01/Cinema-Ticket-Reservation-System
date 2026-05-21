@@ -19,12 +19,14 @@ class SyncMoviesJob {
 
     async syncMovies() {
         try {
-            const movies = await tmdbService.getNowPlayingMovies();
+            const nowPlaying = await tmdbService.getNowPlayingMovies();
+            const upcoming = await tmdbService.getUpcomingMovies();
+            const movies = [...nowPlaying, ...upcoming];
             let addedCount = 0;
 
             for (const movie of movies) {
                 // 1. Film veritabanımızda zaten var mı? (İsimden kontrol ediyoruz)
-                const checkRes = await db.query('SELECT id, duration_minutes FROM movies WHERE title = $1', [movie.title]);
+                const checkRes = await db.query('SELECT id, duration_minutes, release_date FROM movies WHERE title = $1', [movie.title]);
                 
                 if (checkRes.rows.length === 0) {
                     // 2. Yoksa ekle
@@ -41,18 +43,29 @@ class SyncMoviesJob {
                     ]);
                     addedCount++;
                 } else {
-                    // 3. Varsa ve süre 120 (veya farklı) ise güncelle
+                    // 3. Varsa ve veriler güncellenmişse güncelle
                     const existing = checkRes.rows[0];
+                    let needsUpdate = false;
+                    const updates = [];
+                    const values = [];
+
                     if (existing.duration_minutes !== movie.durationMinutes) {
+                        needsUpdate = true;
+                        updates.push(`duration_minutes = $${updates.length + 1}`);
+                        values.push(movie.durationMinutes);
+                    }
+
+                    if (needsUpdate) {
+                        values.push(existing.id);
                         await db.query(
-                            'UPDATE movies SET duration_minutes = $1 WHERE id = $2',
-                            [movie.durationMinutes, existing.id]
+                            `UPDATE movies SET ${updates.join(', ')} WHERE id = $${values.length}`,
+                            values
                         );
                     }
                 }
             }
 
-            console.log(`[CRON] Senkronizasyon tamamlandı! Eklenen yeni film sayısı: ${addedCount}`);
+            console.log(`[CRON] Senkronizasyon tamamlandı! Toplam işlenen film: ${movies.length}, Eklenen yeni film sayısı: ${addedCount}`);
             
             // Redis'teki eski film listesi ve detay önbelleklerini temizle
             await redis.connect();

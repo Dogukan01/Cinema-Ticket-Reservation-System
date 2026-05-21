@@ -92,15 +92,14 @@ async function runSeed() {
 
         // 4. Filmleri Ekle
         console.log('Filmler TMDB API / JSON üzerinden çekiliyor...');
-        const movies = await tmdbService.getNowPlayingMovies();
+        const nowPlayingMovies = await tmdbService.getNowPlayingMovies();
+        const upcomingMovies = await tmdbService.getUpcomingMovies();
         
-        if (!movies || movies.length === 0) {
-            console.log('Hiç film bulunamadı!');
-            process.exit(1);
-        }
-
-        const addedMovies = [];
-        for (const movie of movies) {
+        const nowPlayingIds = [];
+        const upcomingIds = [];
+        
+        console.log('Vizyondaki filmler ekleniyor...');
+        for (const movie of nowPlayingMovies) {
             const insertQuery = `
                 INSERT INTO movies (title, description, duration_minutes, release_date, poster_url)
                 VALUES ($1, $2, $3, $4, $5) RETURNING id
@@ -112,9 +111,26 @@ async function runSeed() {
                 movie.releaseDate, 
                 movie.posterUrl
             ]);
-            addedMovies.push(mRes.rows[0].id);
+            nowPlayingIds.push(mRes.rows[0].id);
         }
-        console.log(`${addedMovies.length} adet film eklendi.`);
+        
+        console.log('Gelecek filmler ekleniyor...');
+        for (const movie of upcomingMovies) {
+            const insertQuery = `
+                INSERT INTO movies (title, description, duration_minutes, release_date, poster_url)
+                VALUES ($1, $2, $3, $4, $5) RETURNING id
+            `;
+            const mRes = await db.query(insertQuery, [
+                movie.title, 
+                movie.description, 
+                movie.durationMinutes, 
+                movie.releaseDate, 
+                movie.posterUrl
+            ]);
+            upcomingIds.push(mRes.rows[0].id);
+        }
+        
+        console.log(`${nowPlayingIds.length} vizyonda, ${upcomingIds.length} yakında film eklendi.`);
 
         // 5. Seansları Ekle (Showtimes) - Toplu INSERT ile hızlı ekleme
         console.log('Seanslar oluşturuluyor (toplu INSERT)...');
@@ -124,8 +140,11 @@ async function runSeed() {
         const startTimes = [];
         const endTimes = [];
         const prices = [];
+        const formats = [];
+        const languageTypes = [];
 
-        for (const movieId of addedMovies) {
+        // Yalnızca vizyondaki filmlere seans tanımlıyoruz
+        for (const movieId of nowPlayingIds) {
             for (const hall of halls) {
                 const hallName = hall.name.toLowerCase();
                 let price = 120.00;
@@ -136,6 +155,7 @@ async function runSeed() {
                 if (hallName.includes('compact') || hallName.includes('küçük')) price = 100.00;
 
                 for (let day = 0; day < 5; day++) {
+                    let hourIdx = 0;
                     for (const hour of [10, 14, 18, 21]) {
                         const startTime = new Date();
                         startTime.setDate(startTime.getDate() + day);
@@ -144,11 +164,29 @@ async function runSeed() {
                         const endTime = new Date(startTime);
                         endTime.setHours(endTime.getHours() + 2, 30, 0, 0);
 
+                        // Format belirle
+                        let format = '2D';
+                        if (hallName.includes('imax')) {
+                            format = 'IMAX';
+                        } else if (hour === 18 && hourIdx % 2 === 0) {
+                            format = '3D';
+                        }
+
+                        // Dil seçeneği belirle
+                        let languageType = 'Türkçe Dublaj';
+                        if (hour === 21 || (hour === 14 && hourIdx % 2 === 1)) {
+                            languageType = 'Türkçe Altyazılı';
+                        }
+
                         movieIds.push(movieId);
                         hallIds.push(hall.id);
                         startTimes.push(startTime);
                         endTimes.push(endTime);
                         prices.push(price);
+                        formats.push(format);
+                        languageTypes.push(languageType);
+                        
+                        hourIdx++;
                     }
                 }
             }
@@ -156,11 +194,11 @@ async function runSeed() {
 
         // Tek sorguda tüm seansları ekle (unnest ile)
         await db.query(`
-            INSERT INTO showtimes (movie_id, hall_id, start_time, end_time, price)
+            INSERT INTO showtimes (movie_id, hall_id, start_time, end_time, price, format, language_type)
             SELECT * FROM unnest(
-                $1::uuid[], $2::uuid[], $3::timestamptz[], $4::timestamptz[], $5::numeric[]
+                $1::uuid[], $2::uuid[], $3::timestamptz[], $4::timestamptz[], $5::numeric[], $6::varchar[], $7::varchar[]
             )
-        `, [movieIds, hallIds, startTimes, endTimes, prices]);
+        `, [movieIds, hallIds, startTimes, endTimes, prices, formats, languageTypes]);
 
         const showtimeCount = movieIds.length;
         
@@ -168,7 +206,7 @@ async function runSeed() {
         console.log(`📊 Veritabanı Özeti:`);
         console.log(`   - Sinema Lokasyonları: ${cinemaIds.length}`);
         console.log(`   - Toplam Salon: ${halls.length}`);
-        console.log(`   - Toplam Film: ${addedMovies.length}`);
+        console.log(`   - Toplam Film: ${nowPlayingIds.length + upcomingIds.length}`);
         console.log(`   - Toplam Seans: ${showtimeCount}`);
         console.log('✅ Seed (Sıfırlama ve Tohumlama) işlemi başarıyla tamamlandı!');
         process.exit(0);
