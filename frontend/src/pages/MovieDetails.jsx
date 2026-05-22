@@ -52,6 +52,10 @@ export default function MovieDetails() {
             </div>
         );
     }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const isUpcoming = movie.release_date && new Date(movie.release_date) > today;
+    const backText = isUpcoming ? "Yakında Vizyona Girecekler" : "Vizyondaki Filmler";
 
     return (
         <div style={{ maxWidth: '1100px', margin: '0 auto', paddingBottom: '60px', position: 'relative' }}>
@@ -78,7 +82,7 @@ export default function MovieDetails() {
                 <Link to="/" style={{ color: 'var(--text-secondary)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '25px', fontWeight: '600', transition: 'color 0.2s ease', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}
                       onMouseOver={e => e.currentTarget.style.color = 'var(--accent-color)'}
                       onMouseOut={e => e.currentTarget.style.color = 'var(--text-secondary)'}>
-                    &larr; Vizyondaki Filmler
+                    &larr; {backText}
                 </Link>
 
                 <div className="glass-panel" style={{ display: 'flex', gap: '40px', padding: '45px', borderRadius: '20px', flexWrap: 'wrap', marginTop: '40px', boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5)', border: '1px solid rgba(255,255,255,0.08)' }}>

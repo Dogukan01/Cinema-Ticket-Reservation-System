@@ -7,7 +7,15 @@ export default function MoviesList() {
     const [movies, setMovies] = useState([]);
     const [loading, setLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState('');
-    const [activeTab, setActiveTab] = useState('vizyon'); // 'vizyon' veya 'yakinda'
+    const [activeTab, setActiveTab] = useState(() => {
+        return sessionStorage.getItem('movies_list_active_tab') || 'vizyon';
+    });
+
+    const handleTabChange = (tab) => {
+        setActiveTab(tab);
+        sessionStorage.setItem('movies_list_active_tab', tab);
+        sessionStorage.removeItem('movies_list_scroll_pos');
+    };
 
     useEffect(() => {
         const fetchMovies = async () => {
@@ -107,7 +115,7 @@ export default function MoviesList() {
                 backdropFilter: 'blur(10px)'
             }}>
                 <button 
-                    onClick={() => setActiveTab('vizyon')}
+                    onClick={() => handleTabChange('vizyon')}
                     style={{
                         padding: '10px 24px',
                         borderRadius: '25px',
@@ -124,7 +132,7 @@ export default function MoviesList() {
                     Vizyondakiler ({vizyonMovies.length})
                 </button>
                 <button 
-                    onClick={() => setActiveTab('yakinda')}
+                    onClick={() => handleTabChange('yakinda')}
                     style={{
                         padding: '10px 24px',
                         borderRadius: '25px',
