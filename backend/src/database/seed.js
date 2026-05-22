@@ -20,10 +20,10 @@ async function runSeed() {
         // 2. Birden Fazla Sinema Lokasyonu Ekle
         console.log('Sinema lokasyonları oluşturuluyor...');
         const cinemaLocations = [
-            { name: 'Paribu Cineverse Kanyon', location: 'Levent, Şişli / İstanbul' },
-            { name: 'Paribu Cineverse Cevahir', location: 'Mecidiyeköy, Şişli / İstanbul' },
-            { name: 'Paribu Cineverse Carousel', location: 'Avcılar / İstanbul' },
-            { name: 'Paribu Cineverse Bağdat', location: 'Bağdat Caddesi, Kadıköy / İstanbul' }
+            { name: 'SBRS Cineverse Kanyon', location: 'Levent, Şişli / İstanbul' },
+            { name: 'SBRS Cineverse Cevahir', location: 'Mecidiyeköy, Şişli / İstanbul' },
+            { name: 'SBRS Cineverse Carousel', location: 'Avcılar / İstanbul' },
+            { name: 'SBRS Cineverse Bağdat', location: 'Bağdat Caddesi, Kadıköy / İstanbul' }
         ];
 
         const cinemaIds = [];

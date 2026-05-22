@@ -21,12 +21,22 @@ export default function MovieBooking() {
     
     const [isModalOpen, setModalOpen] = useState(false);
     const [selectedShowtimeId, setSelectedShowtimeId] = useState(null);
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [isLoggedIn] = useState(() => !!localStorage.getItem('token'));
+    const [selectedCinema, setSelectedCinema] = useState('');
+    const [isCinemaDropdownOpen, setIsCinemaDropdownOpen] = useState(false);
 
-    // Check login state
+    // Close dropdown on click outside
     useEffect(() => {
-        setIsLoggedIn(!!localStorage.getItem('token'));
-    }, []);
+        if (!isCinemaDropdownOpen) return;
+        const handleOutsideClick = (e) => {
+            const dropdownEl = document.getElementById('cinema-dropdown-container');
+            if (dropdownEl && !dropdownEl.contains(e.target)) {
+                setIsCinemaDropdownOpen(false);
+            }
+        };
+        window.addEventListener('click', handleOutsideClick);
+        return () => window.removeEventListener('click', handleOutsideClick);
+    }, [isCinemaDropdownOpen]);
 
     // Fetch active movie details + showtimes whenever activeMovieId changes
     useEffect(() => {
@@ -82,22 +92,6 @@ export default function MovieBooking() {
         return dates;
     }, [activeMovie]);
 
-    // Auto-select first date when activeMovie changes
-    useEffect(() => {
-        if (uniqueDates.length > 0) {
-            if (!selectedDate || !uniqueDates.some(d => d.key === selectedDate)) {
-                setSelectedDate(uniqueDates[0].key);
-            }
-        } else {
-            setSelectedDate('');
-        }
-    }, [activeMovie, uniqueDates, selectedDate]);
-
-    // Reset selected showtime when movie, date or filters change
-    useEffect(() => {
-        setSelectedShowtime(null);
-    }, [activeMovieId, selectedDate, formatFilter, langFilter]);
-
     // Filter showtimes by selected date, format, and language
     const filteredShowtimes = (activeMovie?.showtimes || []).filter(st => {
         // 1. Filter by selected date
@@ -121,6 +115,67 @@ export default function MovieBooking() {
 
         return true;
     });
+
+    // Extract unique cinemas having showtimes on the selected date/filters
+    const uniqueCinemas = React.useMemo(() => {
+        const cinemas = new Set();
+        filteredShowtimes.forEach(st => {
+            if (st.cinema_name) {
+                cinemas.add(st.cinema_name);
+            }
+        });
+        return Array.from(cinemas).sort();
+    }, [filteredShowtimes]);
+
+    // Track previous states for render-time adjustments (avoiding synchronous effects)
+    const [prevMovieId, setPrevMovieId] = useState(activeMovieId);
+    const [prevUniqueDates, setPrevUniqueDates] = useState(uniqueDates);
+    const [prevDate, setPrevDate] = useState(selectedDate);
+    const [prevFormat, setPrevFormat] = useState(formatFilter);
+    const [prevLang, setPrevLang] = useState(langFilter);
+
+    // 1. Reset state when movie ID changes
+    if (activeMovieId !== prevMovieId) {
+        setPrevMovieId(activeMovieId);
+        setSelectedDate('');
+        setSelectedCinema('');
+        setIsCinemaDropdownOpen(false);
+        setSelectedShowtime(null);
+    }
+
+    // 2. Auto-select first date when uniqueDates list changes
+    if (uniqueDates !== prevUniqueDates) {
+        setPrevUniqueDates(uniqueDates);
+        if (uniqueDates.length > 0) {
+            if (!selectedDate || !uniqueDates.some(d => d.key === selectedDate)) {
+                setSelectedDate(uniqueDates[0].key);
+            }
+        } else {
+            setSelectedDate('');
+        }
+    }
+
+    // 3. Reset cinema and showtime when selected date changes
+    if (selectedDate !== prevDate) {
+        setPrevDate(selectedDate);
+        setSelectedCinema('');
+        setIsCinemaDropdownOpen(false);
+        setSelectedShowtime(null);
+    }
+
+    // 4. Reset showtime when filter options change
+    if (formatFilter !== prevFormat || langFilter !== prevLang) {
+        setPrevFormat(formatFilter);
+        setPrevLang(langFilter);
+        setSelectedShowtime(null);
+    }
+
+    // 5. Default to the first cinema if none selected or if selected is not in the list
+    if (uniqueCinemas.length > 0 && (!selectedCinema || !uniqueCinemas.includes(selectedCinema))) {
+        setSelectedCinema(uniqueCinemas[0]);
+    } else if (uniqueCinemas.length === 0 && selectedCinema !== '') {
+        setSelectedCinema('');
+    }
 
     // Group filtered showtimes by Cinema -> Hall -> Format & Language combination
     const groupedData = {};
@@ -424,82 +479,209 @@ export default function MovieBooking() {
                 </div>
             </div>
 
-            {/* 4. Grouped Cinemas & Showtimes */}
-            {Object.keys(groupedData).length === 0 ? (
+            {/* 4. Cinema Selection Dropdown */}
+            {uniqueCinemas.length > 0 && (
+                <div style={{ marginBottom: '35px' }}>
+                    <h2 style={{ fontSize: '1.1rem', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)' }}>
+                        📍 Sinema Salonu Seçimi
+                    </h2>
+                    
+                    {/* Dropdown Container */}
+                    <div id="cinema-dropdown-container" style={{ position: 'relative', width: '100%', maxWidth: '500px' }}>
+                        {/* Trigger Button */}
+                        <div
+                            onClick={() => setIsCinemaDropdownOpen(!isCinemaDropdownOpen)}
+                            style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                background: 'rgba(255, 255, 255, 0.02)',
+                                border: isCinemaDropdownOpen ? '2px solid var(--accent-color)' : '1px solid var(--glass-border)',
+                                borderRadius: '12px',
+                                padding: '16px 20px',
+                                cursor: 'pointer',
+                                transition: 'all 0.3s ease',
+                                boxShadow: isCinemaDropdownOpen ? '0 8px 25px rgba(239, 68, 68, 0.15)' : 'none',
+                            }}
+                            onMouseOver={e => {
+                                if (!isCinemaDropdownOpen) {
+                                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
+                                }
+                            }}
+                            onMouseOut={e => {
+                                if (!isCinemaDropdownOpen) {
+                                    e.currentTarget.style.borderColor = 'var(--glass-border)';
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)';
+                                }
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <span style={{ fontSize: '1.2rem' }}>🎬</span>
+                                <span style={{ fontSize: '1rem', fontWeight: '700', color: selectedCinema ? '#fff' : 'var(--text-secondary)' }}>
+                                    {selectedCinema || 'Sinema Şubesi Seçin'}
+                                </span>
+                            </div>
+                            <span style={{ 
+                                fontSize: '0.8rem', 
+                                transition: 'transform 0.3s ease',
+                                transform: isCinemaDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                                color: 'var(--text-secondary)'
+                            }}>
+                                ▼
+                            </span>
+                        </div>
+
+                        {/* Dropdown Options Menu */}
+                        {isCinemaDropdownOpen && (
+                            <div style={{
+                                position: 'absolute',
+                                top: 'calc(100% + 8px)',
+                                left: 0,
+                                right: 0,
+                                background: 'rgba(15, 23, 42, 0.95)',
+                                backdropFilter: 'blur(20px)',
+                                WebkitBackdropFilter: 'blur(20px)',
+                                border: '1px solid var(--glass-border)',
+                                borderRadius: '12px',
+                                maxHeight: '250px',
+                                overflowY: 'auto',
+                                zIndex: 1000,
+                                boxShadow: '0 15px 40px rgba(0, 0, 0, 0.8)',
+                                padding: '8px 0',
+                                scrollbarWidth: 'thin'
+                            }}>
+                                {uniqueCinemas.map(cinemaName => {
+                                    const isSelected = selectedCinema === cinemaName;
+                                    return (
+                                        <div
+                                            key={cinemaName}
+                                            onClick={() => {
+                                                setSelectedCinema(cinemaName);
+                                                setSelectedShowtime(null); // Reset showtime
+                                                setIsCinemaDropdownOpen(false); // Close dropdown
+                                            }}
+                                            style={{
+                                                padding: '12px 20px',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                background: isSelected ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
+                                                transition: 'all 0.2s ease',
+                                            }}
+                                            onMouseOver={e => {
+                                                e.currentTarget.style.background = isSelected ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255, 255, 255, 0.05)';
+                                            }}
+                                            onMouseOut={e => {
+                                                e.currentTarget.style.background = isSelected ? 'rgba(239, 68, 68, 0.1)' : 'transparent';
+                                            }}
+                                        >
+                                            <span style={{ 
+                                                fontSize: '0.95rem', 
+                                                fontWeight: isSelected ? '800' : '500', 
+                                                color: isSelected ? 'var(--accent-color)' : '#fff' 
+                                            }}>
+                                                {cinemaName}
+                                            </span>
+                                            {isSelected && (
+                                                <span style={{ color: 'var(--accent-color)', fontWeight: 'bold', fontSize: '0.9rem' }}>
+                                                    ✓
+                                                </span>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* 5. Grouped Cinemas & Showtimes (Conditional on Selection) */}
+            {uniqueCinemas.length === 0 ? (
                 <div className="glass-panel" style={{ padding: '60px 20px', textAlign: 'center' }}>
                     <div style={{ fontSize: '3rem', marginBottom: '15px' }}>🎬</div>
                     <h3 style={{ margin: '0 0 8px 0', color: 'var(--text-secondary)', fontSize: '1.2rem' }}>Aradığınız kriterlerde seans bulunamadı.</h3>
                     <p style={{ margin: 0, color: 'rgba(255, 255, 255, 0.35)', fontSize: '0.9rem' }}>Lütfen farklı bir seans tarihi seçin veya filtreleri sıfırlayın.</p>
                 </div>
+            ) : !selectedCinema ? (
+                <div className="glass-panel" style={{ padding: '50px 20px', textAlign: 'center', marginBottom: '30px' }}>
+                    <div style={{ fontSize: '3rem', marginBottom: '15px' }}>📍</div>
+                    <h3 style={{ margin: '0 0 8px 0', color: 'var(--text-secondary)', fontSize: '1.2rem' }}>Lütfen Önce Sinema Salonu Seçin</h3>
+                    <p style={{ margin: 0, color: 'rgba(255, 255, 255, 0.35)', fontSize: '0.9rem' }}>Seansları görüntülemek ve seans saati seçmek için yukarıdaki listeden bir sinema salonu (şubesi) seçmelisiniz.</p>
+                </div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    {Object.entries(groupedData).map(([cinemaName, halls]) => (
-                        <div key={cinemaName} className="glass-panel" style={{ padding: '25px', overflow: 'hidden' }}>
-                            <h3 style={{ margin: '0 0 20px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', fontSize: '1.2rem' }}>
-                                📍 {cinemaName}
-                            </h3>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                {Object.entries(halls).map(([hallName, fmtLangs]) => (
-                                    <div key={hallName} style={{ background: 'rgba(0, 0, 0, 0.15)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.02)' }}>
-                                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>🎬 {hallName}</span>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '12px' }}>
-                                            {Object.entries(fmtLangs).map(([fmtLang, times]) => (
-                                                <div key={fmtLang} style={{ borderLeft: '3px solid var(--accent-color)', paddingLeft: '12px' }}>
-                                                    <div style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.6)', marginBottom: '8px', fontWeight: '700' }}>
-                                                        {fmtLang}
+                    {Object.entries(groupedData)
+                        .filter(([cinemaName]) => cinemaName === selectedCinema)
+                        .map(([cinemaName, halls]) => (
+                            <div key={cinemaName} className="glass-panel" style={{ padding: '25px', overflow: 'hidden' }}>
+                                <h3 style={{ margin: '0 0 20px 0', borderBottom: '1px solid var(--glass-border)', paddingBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)', fontSize: '1.2rem' }}>
+                                    📍 {cinemaName} Seansları
+                                </h3>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                    {Object.entries(halls).map(([hallName, fmtLangs]) => (
+                                        <div key={hallName} style={{ background: 'rgba(0, 0, 0, 0.15)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.02)' }}>
+                                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>🎬 {hallName}</span>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '12px' }}>
+                                                {Object.entries(fmtLangs).map(([fmtLang, times]) => (
+                                                    <div key={fmtLang} style={{ borderLeft: '3px solid var(--accent-color)', paddingLeft: '12px' }}>
+                                                        <div style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.6)', marginBottom: '8px', fontWeight: '700' }}>
+                                                            {fmtLang}
+                                                        </div>
+                                                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                                            {times.map(st => {
+                                                                const isSelected = selectedShowtime?.showtime_id === st.showtime_id;
+                                                                const timeString = new Date(st.start_time).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+                                                                return (
+                                                                    <button
+                                                                        key={st.showtime_id}
+                                                                        onClick={() => handleShowtimeClick(st)}
+                                                                        style={{
+                                                                            background: isSelected ? 'var(--accent-color)' : 'rgba(255, 255, 255, 0.03)',
+                                                                            border: isSelected ? '2px solid var(--accent-color)' : '1px solid var(--glass-border)',
+                                                                            borderRadius: '8px',
+                                                                            padding: '8px 16px',
+                                                                            color: isSelected ? '#000' : '#fff',
+                                                                            cursor: 'pointer',
+                                                                            fontWeight: 'bold',
+                                                                            fontSize: '0.85rem',
+                                                                            transition: 'all 0.25s ease',
+                                                                            boxShadow: isSelected ? '0 0 10px rgba(239, 68, 68, 0.3)' : 'none'
+                                                                        }}
+                                                                        onMouseOver={e => {
+                                                                            if (!isSelected) {
+                                                                                e.currentTarget.style.borderColor = 'var(--accent-color)';
+                                                                                e.currentTarget.style.background = 'var(--accent-color)';
+                                                                                e.currentTarget.style.color = '#000';
+                                                                            }
+                                                                        }}
+                                                                        onMouseOut={e => {
+                                                                            if (!isSelected) {
+                                                                                e.currentTarget.style.borderColor = 'var(--glass-border)';
+                                                                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                                                                                e.currentTarget.style.color = '#fff';
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        {timeString}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
                                                     </div>
-                                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                                        {times.map(st => {
-                                                            const isSelected = selectedShowtime?.showtime_id === st.showtime_id;
-                                                            const timeString = new Date(st.start_time).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-                                                            return (
-                                                                <button
-                                                                    key={st.showtime_id}
-                                                                    onClick={() => handleShowtimeClick(st)}
-                                                                    style={{
-                                                                        background: isSelected ? 'var(--accent-color)' : 'rgba(255, 255, 255, 0.03)',
-                                                                        border: isSelected ? '2px solid var(--accent-color)' : '1px solid var(--glass-border)',
-                                                                        borderRadius: '8px',
-                                                                        padding: '8px 16px',
-                                                                        color: isSelected ? '#000' : '#fff',
-                                                                        cursor: 'pointer',
-                                                                        fontWeight: 'bold',
-                                                                        fontSize: '0.85rem',
-                                                                        transition: 'all 0.25s ease',
-                                                                        boxShadow: isSelected ? '0 0 10px rgba(239, 68, 68, 0.3)' : 'none'
-                                                                    }}
-                                                                    onMouseOver={e => {
-                                                                        if (!isSelected) {
-                                                                            e.currentTarget.style.borderColor = 'var(--accent-color)';
-                                                                            e.currentTarget.style.background = 'var(--accent-color)';
-                                                                            e.currentTarget.style.color = '#000';
-                                                                        }
-                                                                    }}
-                                                                    onMouseOut={e => {
-                                                                        if (!isSelected) {
-                                                                            e.currentTarget.style.borderColor = 'var(--glass-border)';
-                                                                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
-                                                                            e.currentTarget.style.color = '#fff';
-                                                                        }
-                                                                    }}
-                                                                >
-                                                                    {timeString}
-                                                                </button>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
-                                            ))}
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        ))}
                 </div>
             )}
 
-            {/* 5. Sticky Bottom Checkout Bar */}
+            {/* 6. Sticky Bottom Checkout Bar */}
             <div style={{
                 position: 'fixed',
                 bottom: 0,
@@ -534,10 +716,15 @@ export default function MovieBooking() {
                                 </p>
                             </div>
                         </>
+                    ) : selectedCinema ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontSize: '1.25rem' }}>👉</span>
+                            <span style={{ color: 'var(--text-secondary)', fontWeight: '600', fontSize: '0.9rem' }}>Devam etmek için bir seans saati seçin</span>
+                        </div>
                     ) : (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <span style={{ fontSize: '1.25rem' }}>👉</span>
-                            <span style={{ color: 'var(--text-secondary)', fontWeight: '600', fontSize: '0.9rem' }}>Devam etmek için listeden bir seans saati seçin</span>
+                            <span style={{ color: 'var(--text-secondary)', fontWeight: '600', fontSize: '0.9rem' }}>Devam etmek için listeden bir sinema salonu seçin</span>
                         </div>
                     )}
                 </div>
