@@ -23,7 +23,13 @@ async function runSeed() {
             { name: 'SBRS Cineverse Kanyon', location: 'Levent, Şişli / İstanbul' },
             { name: 'SBRS Cineverse Cevahir', location: 'Mecidiyeköy, Şişli / İstanbul' },
             { name: 'SBRS Cineverse Carousel', location: 'Avcılar / İstanbul' },
-            { name: 'SBRS Cineverse Bağdat', location: 'Bağdat Caddesi, Kadıköy / İstanbul' }
+            { name: 'SBRS Cineverse Bağdat', location: 'Bağdat Caddesi, Kadıköy / İstanbul' },
+            { name: 'SBRS Cineverse İstinyePark', location: 'Sarıyer / İstanbul' },
+            { name: 'SBRS Cineverse Zorlu Center', location: 'Beşiktaş / İstanbul' },
+            { name: 'SBRS Cineverse Akasya', location: 'Üsküdar / İstanbul' },
+            { name: 'SBRS Cineverse Mall of İstanbul', location: 'Başakşehir / İstanbul' },
+            { name: 'SBRS Cineverse Vadistanbul', location: 'Sarıyer / İstanbul' },
+            { name: 'SBRS Cineverse Emaar Square', location: 'Üsküdar / İstanbul' }
         ];
 
         const cinemaIds = [];
@@ -59,36 +65,20 @@ async function runSeed() {
             large: generateSeatLayout(10, 14), // 140 koltuk
         };
 
-        // Sinema konfigürasyonu: her sinemaya farklı salonlar
-        const cinemaConfigs = [
-            { halls: ['Salon 1', 'Salon 2 (VIP)', 'IMAX'] },
-            { halls: ['Salon A', 'Salon B (Premium)', 'Salon C (Compact)'] },
-            { halls: ['Sinema 1', 'Sinema 2', 'Sinema 3'] },
-            { halls: ['Hall Standard', 'Hall Büyük', 'Hall VIP'] }
-        ];
-
-        const hallLayoutMapping = {
-            'Salon 1': { layout: seatLayouts.standard, seats: 60 },
-            'Salon 2 (VIP)': { layout: seatLayouts.vip, seats: 20 },
-            'IMAX': { layout: seatLayouts.imax, seats: 96 },
-            'Salon A': { layout: seatLayouts.compact, seats: 24 },
-            'Salon B (Premium)': { layout: seatLayouts.premium, seats: 40 },
-            'Salon C (Compact)': { layout: seatLayouts.standard, seats: 60 },
-            'Sinema 1': { layout: seatLayouts.vip, seats: 20 },
-            'Sinema 2': { layout: seatLayouts.large, seats: 140 },
-            'Sinema 3': { layout: seatLayouts.premium, seats: 40 },
-            'Hall Standard': { layout: seatLayouts.standard, seats: 60 },
-            'Hall Büyük': { layout: seatLayouts.large, seats: 140 },
-            'Hall VIP': { layout: seatLayouts.imax, seats: 96 }
-        };
-
+        // Sinema konfigürasyonu: her sinemaya 20 farklı salon
         const halls = [];
         for (let i = 0; i < cinemaIds.length; i++) {
             const cinemaId = cinemaIds[i];
-            const config = cinemaConfigs[i];
             
-            for (const hallName of config.halls) {
-                const layoutConfig = hallLayoutMapping[hallName];
+            for (let j = 1; j <= 20; j++) {
+                const hallName = `Salon ${j}`;
+                let layoutConfig = { layout: seatLayouts.standard, seats: 60 };
+                if (j === 2 || j === 8 || j === 14 || j === 19) layoutConfig = { layout: seatLayouts.vip, seats: 20 };
+                if (j === 3 || j === 9 || j === 15) layoutConfig = { layout: seatLayouts.imax, seats: 96 };
+                if (j === 4 || j === 10 || j === 16) layoutConfig = { layout: seatLayouts.premium, seats: 40 };
+                if (j === 5 || j === 11 || j === 17) layoutConfig = { layout: seatLayouts.large, seats: 140 };
+                if (j === 6 || j === 12 || j === 18 || j === 20) layoutConfig = { layout: seatLayouts.compact, seats: 24 };
+
                 const hallRes = await db.query(
                     'INSERT INTO halls (cinema_id, name, seat_layout, total_seats) VALUES ($1, $2, $3, $4) RETURNING id, name',
                     [cinemaId, hallName, JSON.stringify(layoutConfig.layout), layoutConfig.seats]
@@ -116,7 +106,7 @@ async function runSeed() {
             }
         }
         
-        const nowPlayingIds = [];
+        const nowPlayingMoviesList = [];
         const upcomingIds = [];
         
         const today = new Date();
@@ -132,7 +122,7 @@ async function runSeed() {
                     duration_minutes = EXCLUDED.duration_minutes,
                     release_date = EXCLUDED.release_date,
                     poster_url = EXCLUDED.poster_url
-                RETURNING id, title, release_date
+                RETURNING id, title, release_date, duration_minutes
             `;
             const mRes = await db.query(insertQuery, [
                 movie.title.trim(), 
@@ -146,13 +136,16 @@ async function runSeed() {
             const releaseDateObj = new Date(dbMovie.release_date);
             
             if (releaseDateObj <= today) {
-                nowPlayingIds.push(dbMovie.id);
+                nowPlayingMoviesList.push({
+                    id: dbMovie.id,
+                    duration: dbMovie.duration_minutes || 120
+                });
             } else {
                 upcomingIds.push(dbMovie.id);
             }
         }
         
-        console.log(`${nowPlayingIds.length} vizyonda (seans tanımlanacak), ${upcomingIds.length} yakında film eklendi.`);
+        console.log(`${nowPlayingMoviesList.length} vizyonda (seans tanımlanacak), ${upcomingIds.length} yakında film eklendi.`);
 
         // 5. Seansları Ekle (Showtimes) - Toplu INSERT ile hızlı ekleme
         console.log('Seanslar oluşturuluyor (toplu INSERT)...');
@@ -165,51 +158,57 @@ async function runSeed() {
         const formats = [];
         const languageTypes = [];
 
-        // Yalnızca vizyondaki filmlere seans tanımlıyoruz
-        for (const movieId of nowPlayingIds) {
-            for (const hall of halls) {
-                const hallName = hall.name.toLowerCase();
-                let price = 120.00;
-                if (hallName.includes('vip')) price = 250.00;
-                if (hallName.includes('imax')) price = 180.00;
-                if (hallName.includes('premium')) price = 200.00;
-                if (hallName.includes('büyük') || hallName.includes('large')) price = 140.00;
-                if (hallName.includes('compact') || hallName.includes('küçük')) price = 100.00;
+        // Yalnızca vizyondaki filmlere seans tanımlıyoruz (Her salona tüm gün için 1 veya 2 film atanacak)
+        let movieIndex = 0;
+        for (const hall of halls) {
+            const hallName = hall.name.toLowerCase();
+            let price = 120.00;
+            if (hallName.includes('vip')) price = 250.00;
+            if (hallName.includes('imax')) price = 180.00;
+            if (hallName.includes('premium')) price = 200.00;
+            if (hallName.includes('büyük') || hallName.includes('large')) price = 140.00;
+            if (hallName.includes('compact') || hallName.includes('küçük')) price = 100.00;
 
-                for (let day = 0; day < 5; day++) {
-                    let hourIdx = 0;
-                    for (const hour of [10, 14, 18, 21]) {
-                        const startTime = new Date();
-                        startTime.setDate(startTime.getDate() + day);
-                        startTime.setHours(hour, 0, 0, 0);
+            if (nowPlayingMoviesList.length === 0) break;
+            
+            // Bu salon için bir film seçelim. Film bu salonu tüm gün kapatacak.
+            const activeMovie = nowPlayingMoviesList[movieIndex % nowPlayingMoviesList.length];
+            movieIndex++;
 
-                        const endTime = new Date(startTime);
-                        endTime.setHours(endTime.getHours() + 2, 30, 0, 0);
+            for (let day = 0; day < 5; day++) {
+                let hourIdx = 0;
+                for (const hour of [10, 13, 16, 19, 22]) {
+                    
+                    const startTime = new Date();
+                    startTime.setDate(startTime.getDate() + day);
+                    startTime.setHours(hour, 0, 0, 0);
 
-                        // Format belirle
-                        let format = '2D';
-                        if (hallName.includes('imax')) {
-                            format = 'IMAX';
-                        } else if (hour === 18 && hourIdx % 2 === 0) {
-                            format = '3D';
-                        }
+                    const endTime = new Date(startTime);
+                    endTime.setMinutes(endTime.getMinutes() + activeMovie.duration + 20); // Film süresi + 20 dk hazırlık
 
-                        // Dil seçeneği belirle
-                        let languageType = 'Türkçe Dublaj';
-                        if (hour === 21 || (hour === 14 && hourIdx % 2 === 1)) {
-                            languageType = 'Türkçe Altyazılı';
-                        }
-
-                        movieIds.push(movieId);
-                        hallIds.push(hall.id);
-                        startTimes.push(startTime);
-                        endTimes.push(endTime);
-                        prices.push(price);
-                        formats.push(format);
-                        languageTypes.push(languageType);
-                        
-                        hourIdx++;
+                    // Format belirle
+                    let format = '2D';
+                    if (hallName.includes('imax')) {
+                        format = 'IMAX';
+                    } else if (hour === 18 && hourIdx % 2 === 0) {
+                        format = '3D';
                     }
+
+                    // Dil seçeneği belirle
+                    let languageType = 'Türkçe Dublaj';
+                    if (hour === 21 || (hour === 14 && hourIdx % 2 === 1)) {
+                        languageType = 'Türkçe Altyazılı';
+                    }
+
+                    movieIds.push(activeMovie.id);
+                    hallIds.push(hall.id);
+                    startTimes.push(startTime);
+                    endTimes.push(endTime);
+                    prices.push(price);
+                    formats.push(format);
+                    languageTypes.push(languageType);
+                    
+                    hourIdx++;
                 }
             }
         }
@@ -228,7 +227,7 @@ async function runSeed() {
         console.log(`📊 Veritabanı Özeti:`);
         console.log(`   - Sinema Lokasyonları: ${cinemaIds.length}`);
         console.log(`   - Toplam Salon: ${halls.length}`);
-        console.log(`   - Toplam Film: ${nowPlayingIds.length + upcomingIds.length}`);
+        console.log(`   - Toplam Film: ${nowPlayingMoviesList.length + upcomingIds.length}`);
         console.log(`   - Toplam Seans: ${showtimeCount}`);
         console.log('✅ Seed (Sıfırlama ve Tohumlama) işlemi başarıyla tamamlandı!');
         process.exit(0);

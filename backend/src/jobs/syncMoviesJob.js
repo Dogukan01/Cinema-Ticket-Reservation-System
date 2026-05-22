@@ -98,10 +98,13 @@ class SyncMoviesJob {
                     WHERE movie_id IN (
                         SELECT id FROM movies WHERE title NOT IN (SELECT unnest($1::varchar[]))
                     )
+                    AND id NOT IN (
+                        SELECT DISTINCT showtime_id FROM tickets
+                    )
                 `;
                 const deleteRes = await db.query(deleteShowtimesQuery, [currentMovieTitles]);
                 if (deleteRes.rowCount > 0) {
-                    console.log(`[CRON] Listeden kalkan filmlerin ${deleteRes.rowCount} adet seansı temizlendi.`);
+                    console.log(`[CRON] Listeden kalkan filmlerin bilet satılmamış ${deleteRes.rowCount} adet seansı temizlendi.`);
                 }
             }
 
@@ -132,6 +135,39 @@ class SyncMoviesJob {
                 return;
             }
 
+            const minDate = new Date();
+            minDate.setHours(0, 0, 0, 0);
+            const maxDate = new Date();
+            maxDate.setDate(maxDate.getDate() + 5);
+            maxDate.setHours(23, 59, 59, 999);
+
+            // Fetch existing showtimes for the next 5 days
+            const existingShowtimesRes = await db.query(
+                `SELECT s.id, s.hall_id, s.start_time, s.end_time, s.movie_id,
+                        (SELECT COUNT(*) FROM tickets t WHERE t.showtime_id = s.id) as ticket_count
+                 FROM showtimes s
+                 WHERE s.start_time >= $1 AND s.start_time <= $2`,
+                [minDate, maxDate]
+            );
+            
+            const existingShowtimes = existingShowtimesRes.rows.map(row => ({
+                id: row.id,
+                hall_id: row.hall_id,
+                start_time: new Date(row.start_time),
+                end_time: new Date(row.end_time),
+                movie_id: row.movie_id,
+                ticket_count: parseInt(row.ticket_count || 0)
+            }));
+
+            // Fetch total showtime counts per movie to assist in rebalancing
+            const movieShowtimeCountsRes = await db.query(
+                `SELECT movie_id, COUNT(*) as count FROM showtimes GROUP BY movie_id`
+            );
+            const movieShowtimeCounts = {};
+            movieShowtimeCountsRes.rows.forEach(r => {
+                movieShowtimeCounts[r.movie_id] = parseInt(r.count);
+            });
+
             const movieIds = [];
             const hallIds = [];
             const startTimes = [];
@@ -140,7 +176,12 @@ class SyncMoviesJob {
             const formats = [];
             const languageTypes = [];
 
+            let generatedCount = 0;
+            const targetCount = 10; // Target 10 showtimes for this new movie across the 5 days
+
             for (const hall of halls) {
+                if (generatedCount >= targetCount) break;
+
                 const hallName = hall.name.toLowerCase();
                 let price = 120.00;
                 if (hallName.includes('vip')) price = 250.00;
@@ -150,8 +191,12 @@ class SyncMoviesJob {
                 if (hallName.includes('compact') || hallName.includes('küçük')) price = 100.00;
 
                 for (let day = 0; day < 5; day++) {
+                    if (generatedCount >= targetCount) break;
+
                     let hourIdx = 0;
                     for (const hour of [10, 14, 18, 21]) {
+                        if (generatedCount >= targetCount) break;
+
                         const startTime = new Date();
                         startTime.setDate(startTime.getDate() + day);
                         startTime.setHours(hour, 0, 0, 0);
@@ -159,28 +204,104 @@ class SyncMoviesJob {
                         const endTime = new Date(startTime);
                         endTime.setMinutes(endTime.getMinutes() + durationMinutes + 20);
 
-                        // Format belirle
-                        let format = '2D';
-                        if (hallName.includes('imax')) {
-                            format = 'IMAX';
-                        } else if (hour === 18 && hourIdx % 2 === 0) {
-                            format = '3D';
+                        // Find overlapping showtimes
+                        const overlapping = existingShowtimes.filter(st => {
+                            if (st.hall_id !== hall.id) return false;
+                            // Overlap if: NOT (endTime <= st.start_time OR startTime >= st.end_time)
+                            return !(endTime <= st.start_time || startTime >= st.end_time);
+                        });
+
+                        if (overlapping.length === 0) {
+                            // Slot is completely free!
+                            // Format belirle
+                            let format = '2D';
+                            if (hallName.includes('imax')) {
+                                format = 'IMAX';
+                            } else if (hour === 18 && hourIdx % 2 === 0) {
+                                format = '3D';
+                            }
+
+                            // Dil seçeneği belirle
+                            let languageType = 'Türkçe Dublaj';
+                            if (hour === 21 || (hour === 14 && hourIdx % 2 === 1)) {
+                                languageType = 'Türkçe Altyazılı';
+                            }
+
+                            movieIds.push(movieId);
+                            hallIds.push(hall.id);
+                            startTimes.push(startTime);
+                            endTimes.push(endTime);
+                            prices.push(price);
+                            formats.push(format);
+                            languageTypes.push(languageType);
+
+                            existingShowtimes.push({
+                                id: null, // New showtime not yet saved to DB
+                                hall_id: hall.id,
+                                start_time: startTime,
+                                end_time: endTime,
+                                movie_id: movieId,
+                                ticket_count: 0
+                            });
+
+                            generatedCount++;
+                        } else {
+                            // Slot is occupied. Check if we can rebalance by replacing it
+                            // We can replace if ALL overlapping showtimes have 0 tickets and the other movie has > 10 showtimes
+                            const canReplace = overlapping.every(st => {
+                                const otherMovieCount = movieShowtimeCounts[st.movie_id] || 0;
+                                return st.ticket_count === 0 && otherMovieCount > 10 && st.movie_id !== movieId;
+                            });
+
+                            if (canReplace) {
+                                // Delete overlapping showtimes from DB and memory
+                                for (const st of overlapping) {
+                                    if (st.id) {
+                                        await db.query('DELETE FROM showtimes WHERE id = $1', [st.id]);
+                                        // Update counts
+                                        movieShowtimeCounts[st.movie_id] = (movieShowtimeCounts[st.movie_id] || 1) - 1;
+                                    }
+                                    const index = existingShowtimes.indexOf(st);
+                                    if (index > -1) {
+                                        existingShowtimes.splice(index, 1);
+                                    }
+                                }
+
+                                // Format belirle
+                                let format = '2D';
+                                if (hallName.includes('imax')) {
+                                    format = 'IMAX';
+                                } else if (hour === 18 && hourIdx % 2 === 0) {
+                                    format = '3D';
+                                }
+
+                                // Dil seçeneği belirle
+                                let languageType = 'Türkçe Dublaj';
+                                if (hour === 21 || (hour === 14 && hourIdx % 2 === 1)) {
+                                    languageType = 'Türkçe Altyazılı';
+                                }
+
+                                movieIds.push(movieId);
+                                hallIds.push(hall.id);
+                                startTimes.push(startTime);
+                                endTimes.push(endTime);
+                                prices.push(price);
+                                formats.push(format);
+                                languageTypes.push(languageType);
+
+                                existingShowtimes.push({
+                                    id: null,
+                                    hall_id: hall.id,
+                                    start_time: startTime,
+                                    end_time: endTime,
+                                    movie_id: movieId,
+                                    ticket_count: 0
+                                });
+
+                                generatedCount++;
+                            }
                         }
 
-                        // Dil seçeneği belirle
-                        let languageType = 'Türkçe Dublaj';
-                        if (hour === 21 || (hour === 14 && hourIdx % 2 === 1)) {
-                            languageType = 'Türkçe Altyazılı';
-                        }
-
-                        movieIds.push(movieId);
-                        hallIds.push(hall.id);
-                        startTimes.push(startTime);
-                        endTimes.push(endTime);
-                        prices.push(price);
-                        formats.push(format);
-                        languageTypes.push(languageType);
-                        
                         hourIdx++;
                     }
                 }
@@ -193,6 +314,7 @@ class SyncMoviesJob {
                         $1::uuid[], $2::uuid[], $3::timestamptz[], $4::timestamptz[], $5::numeric[], $6::varchar[], $7::varchar[]
                     )
                 `, [movieIds, hallIds, startTimes, endTimes, prices, formats, languageTypes]);
+                console.log(`[CRON] ${movieIds.length} adet seans çakışmasız ve dengeli şekilde oluşturuldu.`);
             }
         } catch (error) {
             console.error('[CRON ERROR] Otomatik seans oluşturulurken hata:', error.message);
