@@ -9,7 +9,7 @@ export default function Profile() {
     const navigate = useNavigate();
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [selectedTicket, setSelectedTicket] = useState(null);
+    const [selectedTicket, setSelectedTicket] = useState(null); // This will now hold a group of tickets
 
     useEffect(() => {
         const token = localStorage.getItem('token');
@@ -44,7 +44,7 @@ export default function Profile() {
         return diffHours >= 2;
     };
 
-    const handleCancelTicket = async (e, ticketId) => {
+    const handleCancelTicket = async (e, ticketId, groupId) => {
         e.stopPropagation();
         const confirmCancel = window.confirm("Bu bileti iptal etmek istediğinize emin misiniz? Bilet için kazanılan 10 puan hesabınızdan düşülecek, kullanılan puanlar iade edilecektir.");
         if (!confirmCancel) return;
@@ -56,8 +56,17 @@ export default function Profile() {
             // Reload profile data
             const res = await api.get('/user/profile');
             setProfile(res.data);
-            if (selectedTicket && selectedTicket.ticket_id === ticketId) {
-                setSelectedTicket(null);
+            
+            // Update the selected group in modal
+            if (selectedTicket && selectedTicket.id === groupId) {
+                const newTickets = res.data.tickets;
+                const groupItems = newTickets.filter(t => `${t.start_time}_${t.created_at}` === groupId);
+                if (groupItems.length > 0) {
+                    setSelectedTicket({
+                        ...selectedTicket,
+                        items: groupItems
+                    });
+                }
             }
         } catch (err) {
             toast.error(err.response?.data?.error || "Bilet iptal edilirken bir hata oluştu.");
@@ -73,6 +82,10 @@ export default function Profile() {
             const actions = document.getElementById('ticket-modal-actions');
             if (actions) actions.style.display = 'none';
 
+            // Tablodaki iptal butonlarını da gizle
+            const cancelButtons = element.querySelectorAll('.cancel-btn-cell');
+            cancelButtons.forEach(btn => btn.style.display = 'none');
+
             const canvas = await html2canvas(element, {
                 scale: 2,
                 useCORS: true,
@@ -80,6 +93,7 @@ export default function Profile() {
             });
 
             if (actions) actions.style.display = 'flex';
+            cancelButtons.forEach(btn => btn.style.display = 'table-cell');
             
             const imgData = canvas.toDataURL('image/png');
             const pdf = new jsPDF('p', 'mm', 'a4');
@@ -87,7 +101,7 @@ export default function Profile() {
             const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
             
             pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            pdf.save(`SBRS_Bilet_${selectedTicket.ticket_id}.pdf`);
+            pdf.save(`SBRS_Bilet_${selectedTicket.items[0].ticket_id}.pdf`);
         } catch (error) {
             console.error('PDF oluşturma hatası:', error);
             toast.error('Bilet indirilirken bir hata oluştu.');
@@ -101,6 +115,29 @@ export default function Profile() {
     if (!profile) return null;
 
     const { user, tickets } = profile;
+
+    // Group tickets by showtime and creation time so multiple seats bought together show as one group
+    const groupedTicketsMap = new Map();
+    if (tickets) {
+        tickets.forEach(ticket => {
+            const key = `${ticket.start_time}_${ticket.created_at}`;
+            if (!groupedTicketsMap.has(key)) {
+                groupedTicketsMap.set(key, {
+                    id: key,
+                    movie_title: ticket.movie_title,
+                    cinema_name: ticket.cinema_name,
+                    hall_name: ticket.hall_name,
+                    start_time: ticket.start_time,
+                    poster_url: ticket.poster_url,
+                    created_at: ticket.created_at,
+                    items: [ticket]
+                });
+            } else {
+                groupedTicketsMap.get(key).items.push(ticket);
+            }
+        });
+    }
+    const groupedTickets = Array.from(groupedTicketsMap.values());
 
     return (
         <div style={{ maxWidth: '1000px', margin: '40px auto', padding: '20px' }}>
@@ -133,94 +170,77 @@ export default function Profile() {
             </div>
 
             <h2 style={{ color: 'white', marginBottom: '20px' }}>Geçmiş Biletlerim</h2>
-            {tickets.length === 0 ? (
+            {groupedTickets.length === 0 ? (
                 <div className="glass-panel" style={{ padding: '40px', textAlign: 'center' }}>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem' }}>Henüz satın alınmış bir biletiniz bulunmuyor.</p>
                 </div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    {tickets.map(ticket => (
-                        <div 
-                            key={ticket.ticket_id} 
-                            className="glass-panel" 
-                            style={{ 
-                                padding: '20px', 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '20px',
-                                cursor: 'pointer',
-                                transition: 'transform 0.2s, box-shadow 0.2s',
-                                border: '1px solid transparent'
-                            }}
-                            onMouseEnter={e => {
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                                e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.2)';
-                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
-                            }}
-                            onMouseLeave={e => {
-                                e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.boxShadow = 'none';
-                                e.currentTarget.style.borderColor = 'transparent';
-                            }}
-                            onClick={() => setSelectedTicket(ticket)}
-                        >
-                            <img 
-                                src={ticket.poster_url || 'https://via.placeholder.com/100x150'} 
-                                alt={ticket.movie_title}
-                                style={{ width: '80px', height: '120px', objectFit: 'cover', borderRadius: '8px' }}
-                            />
-                            <div style={{ flex: 1 }}>
-                                <h3 style={{ color: 'white', marginBottom: '10px' }}>{ticket.movie_title}</h3>
-                                <p style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>
-                                    {ticket.cinema_name} - {ticket.hall_name}
-                                </p>
-                                <p style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>
-                                    Seans: <span style={{ color: 'white' }}>{new Date(ticket.start_time).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' })}</span>
-                                </p>
-                                <p style={{ color: 'var(--text-secondary)' }}>
-                                    Koltuk: <span style={{ color: 'var(--accent-color)', fontWeight: 'bold' }}>{ticket.seat_id}</span> 
-                                    <span style={{ margin: '0 10px' }}>|</span> 
-                                    Tür: {ticket.ticket_type === 'ADULT' ? 'Yetişkin' : 'Öğrenci'}
-                                </p>
+                    {groupedTickets.map(group => {
+                        const totalPrice = group.items.reduce((sum, t) => sum + parseFloat(t.price), 0);
+                        const activeItems = group.items.filter(t => t.status !== 'CANCELLED');
+                        const isCancelled = activeItems.length === 0;
+
+                        return (
+                            <div 
+                                key={group.id} 
+                                className="glass-panel" 
+                                style={{ 
+                                    padding: '20px', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '20px',
+                                    cursor: 'pointer',
+                                    transition: 'transform 0.2s, box-shadow 0.2s',
+                                    border: '1px solid transparent'
+                                }}
+                                onMouseEnter={e => {
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                    e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.2)';
+                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                                }}
+                                onMouseLeave={e => {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = 'none';
+                                    e.currentTarget.style.borderColor = 'transparent';
+                                }}
+                                onClick={() => setSelectedTicket(group)}
+                            >
+                                <img 
+                                    src={group.poster_url || 'https://via.placeholder.com/100x150'} 
+                                    alt={group.movie_title}
+                                    style={{ width: '80px', height: '120px', objectFit: 'cover', borderRadius: '8px' }}
+                                />
+                                <div style={{ flex: 1 }}>
+                                    <h3 style={{ color: 'white', marginBottom: '10px' }}>{group.movie_title}</h3>
+                                    <p style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>
+                                        {group.cinema_name} - {group.hall_name}
+                                    </p>
+                                    <p style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>
+                                        Seans: <span style={{ color: 'white' }}>{new Date(group.start_time).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                                    </p>
+                                    <p style={{ color: 'var(--text-secondary)' }}>
+                                        Koltuklar: <span style={{ color: 'var(--accent-color)', fontWeight: 'bold' }}>{group.items.map(t => t.seat_id).join(', ')}</span> 
+                                    </p>
+                                </div>
+                                <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
+                                    <p style={{ color: '#10b981', fontSize: '1.4rem', fontWeight: 'bold', margin: 0 }}>
+                                        {totalPrice.toFixed(2)} ₺
+                                    </p>
+                                    <span style={{ 
+                                        padding: '5px 10px', 
+                                        background: isCancelled ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)', 
+                                        color: isCancelled ? '#ef4444' : '#10b981', 
+                                        borderRadius: '5px',
+                                        fontSize: '0.9rem',
+                                        fontWeight: '600'
+                                    }}>
+                                        {isCancelled ? 'İPTAL' : 'GEÇERLİ'}
+                                    </span>
+                                </div>
                             </div>
-                            <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
-                                <p style={{ color: '#10b981', fontSize: '1.4rem', fontWeight: 'bold', margin: 0 }}>
-                                    {parseFloat(ticket.price).toFixed(2)} ₺
-                                </p>
-                                <span style={{ 
-                                    padding: '5px 10px', 
-                                    background: ticket.status === 'CANCELLED' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)', 
-                                    color: ticket.status === 'CANCELLED' ? '#ef4444' : '#10b981', 
-                                    borderRadius: '5px',
-                                    fontSize: '0.9rem',
-                                    fontWeight: '600'
-                                }}>
-                                    {ticket.status === 'CANCELLED' ? 'İPTAL' : 'GEÇERLİ'}
-                                </span>
-                                {canCancel(ticket) && (
-                                    <button 
-                                        onClick={(e) => handleCancelTicket(e, ticket.ticket_id)}
-                                        style={{ 
-                                            background: 'rgba(239, 68, 68, 0.2)', 
-                                            border: '1px solid #ef4444', 
-                                            color: '#ef4444', 
-                                            fontSize: '0.85rem',
-                                            padding: '8px 12px',
-                                            borderRadius: '6px',
-                                            cursor: 'pointer',
-                                            fontWeight: '600',
-                                            transition: 'all 0.2s ease',
-                                            marginTop: '5px'
-                                        }}
-                                        onMouseEnter={e => e.target.style.background = '#ef4444'}
-                                        onMouseLeave={e => e.target.style.background = 'rgba(239, 68, 68, 0.2)'}
-                                    >
-                                        Bileti İptal Et
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
 
@@ -239,7 +259,7 @@ export default function Profile() {
                     <div 
                         className="invoice-container" 
                         style={{ 
-                            maxWidth: '600px', 
+                            maxWidth: '650px', 
                             width: '100%', 
                             maxHeight: '90vh', 
                             overflowY: 'auto',
@@ -255,8 +275,10 @@ export default function Profile() {
                                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>SBRS Sinema</p>
                                 </div>
                                 <div className="receipt-number">
-                                    <p style={{ color: 'var(--text-secondary)', marginBottom: '5px', fontSize: '0.9rem' }}>Bilet No</p>
-                                    <h3 style={{ color: 'var(--accent-color)', fontFamily: 'monospace', margin: 0 }}>{selectedTicket.ticket_id}</h3>
+                                    <p style={{ color: 'var(--text-secondary)', marginBottom: '5px', fontSize: '0.9rem' }}>Referans No</p>
+                                    <h3 style={{ color: 'var(--accent-color)', fontFamily: 'monospace', margin: 0 }}>
+                                        {selectedTicket.items[0].ticket_id}
+                                    </h3>
                                 </div>
                             </div>
 
@@ -321,14 +343,39 @@ export default function Profile() {
                                             <th>Koltuk No</th>
                                             <th>Bilet Türü</th>
                                             <th style={{ textAlign: 'right' }}>Fiyat</th>
+                                            <th className="cancel-btn-cell" style={{ textAlign: 'right' }}>İşlem</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr>
-                                            <td className="invoice-seat-cell">{selectedTicket.seat_id}</td>
-                                            <td>{selectedTicket.ticket_type === 'ADULT' ? 'Yetişkin' : 'Öğrenci'}</td>
-                                            <td style={{ textAlign: 'right', fontWeight: '600' }}>{parseFloat(selectedTicket.price).toFixed(2)} TL</td>
-                                        </tr>
+                                        {selectedTicket.items.map(t => (
+                                            <tr key={t.ticket_id}>
+                                                <td className="invoice-seat-cell">{t.seat_id}</td>
+                                                <td>{t.ticket_type === 'ADULT' ? 'Yetişkin' : 'Öğrenci'}</td>
+                                                <td style={{ textAlign: 'right', fontWeight: '600' }}>{parseFloat(t.price).toFixed(2)} TL</td>
+                                                <td className="cancel-btn-cell" style={{ textAlign: 'right' }}>
+                                                    {t.status === 'CANCELLED' ? (
+                                                        <span style={{color: '#ef4444', fontSize: '0.85rem'}}>İptal Edildi</span>
+                                                    ) : canCancel(t) ? (
+                                                        <button 
+                                                            onClick={(e) => handleCancelTicket(e, t.ticket_id, selectedTicket.id)}
+                                                            style={{ 
+                                                                background: 'rgba(239, 68, 68, 0.2)', 
+                                                                border: '1px solid #ef4444', 
+                                                                color: '#ef4444', 
+                                                                fontSize: '0.8rem',
+                                                                padding: '6px 10px',
+                                                                borderRadius: '4px',
+                                                                cursor: 'pointer'
+                                                            }}
+                                                        >
+                                                            İptal Et
+                                                        </button>
+                                                    ) : (
+                                                        <span style={{color: '#10b981', fontSize: '0.85rem'}}>Geçerli</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
                                     </tbody>
                                 </table>
                             </div>
@@ -337,9 +384,9 @@ export default function Profile() {
                             
                             <div className="invoice-total-section">
                                 <div className="invoice-total-row">
-                                    <span>Durum</span>
-                                    <strong style={{ color: selectedTicket.status === 'CANCELLED' ? '#ef4444' : '#10b981' }}>
-                                        {selectedTicket.status === 'CANCELLED' ? 'İPTAL EDİLDİ' : 'GEÇERLİ'}
+                                    <span>Toplam Tutar</span>
+                                    <strong style={{ color: 'var(--accent-color)', fontSize: '1.4rem' }}>
+                                        {selectedTicket.items.reduce((sum, t) => sum + parseFloat(t.price), 0).toFixed(2)} TL
                                     </strong>
                                 </div>
                             </div>
